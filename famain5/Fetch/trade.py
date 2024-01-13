@@ -5,6 +5,8 @@ from datetime import datetime
 import math
 import time
 
+from .util import UTIL
+
 class TRADE(object):
 
     @staticmethod
@@ -17,12 +19,14 @@ class TRADE(object):
             if ema_crossover_trades :
                 trades.extend(ema_crossover_trades)
 
-            logging.info("trades found____________________" + str(trades))
-
+            UTIL.append_log_line("trades found............" + str(len(trades)))
+            for trade in trades:
+                UTIL.append_log_line(trade)
+            
             return trades
 
         except Exception as e:
-            logging.exception("Error : FETCH.fetch_historical_data_____" + str(e))
+            UTIL.append_log_line("Error : FETCH.fetch_historical_data_____" + str(e))
             raise Exception("Error : FETCH.fetch_historical_data_____") from e
     
     @staticmethod
@@ -51,7 +55,7 @@ class TRADE(object):
                     trades.append("EmaCrossover," + str(token) + "," + stock_data[-1][1] + "," + buyORSell)
             
             except Exception as se:
-                logging.exception("Error : emacrossover_____" + str(se) + " __ " + str(token))
+                UTIL.append_log_line("Error : emacrossover_____" + str(se) + " __ " + str(token))
     
         return trades
     
@@ -73,8 +77,9 @@ class TRADE(object):
                         if order['transactiontype'] == 'BUY' :
 
                             stoploss_price = float(order['triggerprice'])
+                            ltp = None
 
-                            if ltp[order['tradingsymbol']] :
+                            if order['tradingsymbol'] in ltp_map :
                                 ltp = ltp_map[order['tradingsymbol']]
                             else :
                                 ltpData = smartAPI.ltpData("NSE", order['tradingsymbol'], order['symboltoken'])
@@ -85,7 +90,7 @@ class TRADE(object):
                                 new_trigger_price = math.ceil(ltp + ltp*0.01)
                                 order['triggerprice'] = new_trigger_price
                                 orderOutput = smartAPI.modifyOrder(order)
-                                logging.info("Trailing Stop Loss Order placed.............. ltp=" + str(ltp) + ".....new_trigger_price=" + str(new_trigger_price) + "...." + str(orderOutput))
+                                UTIL.append_log_line("Trailing Stop Loss Order placed.............. ltp=" + str(ltp) + ".....new_trigger_price=" + str(new_trigger_price) + "...." + str(orderOutput))
                             
                             time.sleep(0.5)
     
@@ -99,7 +104,7 @@ class TRADE(object):
             for order in order_book['data']:
                 if order['status'] == 'open' or order['status'] == 'trigger pending':
                     cancelOrderOutput = smartAPI.cancelOrder(order['orderid'],'NORMAL')
-                    logging.info("Cancelling Open Order............ " + str(cancelOrderOutput))
+                    UTIL.append_log_line("Cancelling Open Order............ " + str(cancelOrderOutput))
                     time.sleep(0.5)
         
         #Place fresh squareoff MARKET orders
@@ -128,6 +133,7 @@ class TRADE(object):
                         "stoploss": "0"
                     }
 
-                    smartAPI.placeOrder(orderParam)
+                    order_output = smartAPI.placeOrder(orderParam)
+                    UTIL.append_log_line("Position squareoff Open Order............ " + str(order_output))
 
                     time.sleep(0.5)

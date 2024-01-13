@@ -13,8 +13,13 @@ import time
 
 class UTIL(object):
 
+    LOG_LINES = []
     TRADE_SETUP_COUNT = 4
 
+    @staticmethod
+    def append_log_line(log_object):
+        UTIL.LOG_LINES.append(str(log_object))
+    
     @staticmethod
     def getSmartAPI():
         api_key = 'ifWvWAZ3'
@@ -28,28 +33,23 @@ class UTIL(object):
     
     @staticmethod
     def fetch_historical_data(smartAPI, token, symbol, timedelta_days, interval="ONE_HOUR"):
-        try:
 
-            todays_date = datetime.now()
-            previous_date = todays_date - timedelta(timedelta_days)
-            todays_date = todays_date.astimezone(pytz.timezone("Asia/Calcutta")).strftime("%Y-%m-%d %H:%M")
-            previous_date = previous_date.astimezone(pytz.timezone("Asia/Calcutta")).strftime("%Y-%m-%d %H:%M")
+        todays_date = datetime.now()
+        previous_date = todays_date - timedelta(timedelta_days)
+        todays_date = todays_date.astimezone(pytz.timezone("Asia/Calcutta")).strftime("%Y-%m-%d %H:%M")
+        previous_date = previous_date.astimezone(pytz.timezone("Asia/Calcutta")).strftime("%Y-%m-%d %H:%M")
 
-            historicParam = {
-                "exchange": "NSE",
-                "symboltoken": token,
-                "interval": interval,
-                "fromdate": previous_date,
-                "todate": todays_date
-            }
+        historicParam = {
+            "exchange": "NSE",
+            "symboltoken": token,
+            "interval": interval,
+            "fromdate": previous_date,
+            "todate": todays_date
+        }
 
-            data = smartAPI.getCandleData(historicParam)
+        data = smartAPI.getCandleData(historicParam)
 
-            return [[token,symbol,row[0],row[1],row[2],row[3],row[4]] for row in data['data']]  # date, open, high, low, close
-
-        except Exception as e:
-            logging.exception("Error : FETCH.fetch_historical_data_____" + str(e))
-            raise Exception("Error : FETCH.fetch_historical_data_____") from e
+        return [[token,symbol,row[0],row[1],row[2],row[3],row[4]] for row in data['data']]  # date, open, high, low, close
     
     @staticmethod
     def execute_trades(smartAPI, trades, fund_balance):
@@ -94,11 +94,13 @@ class UTIL(object):
                     "trailingStopLoss":1
                 }
 
-                logging.info("orderParam:" + str(orderParam))
+                UTIL.append_log_line("orderParam:" + str(orderParam))
 
-                time.sleep(1)
+                time.sleep(0.5)
 
-                smartAPI.placeOrder(orderParam)
+                order_output = smartAPI.placeOrder(orderParam)
+
+                UTIL.append_log_line("order_output:" + str(order_output))
             
             except Exception as se:
-                logging.exception("Error : TradeExecution_____" + str(se) + "_____" + trade)
+                UTIL.append_log_line("Error : TradeExecution_____" + str(se) + "_____" + trade)
