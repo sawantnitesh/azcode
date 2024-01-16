@@ -39,20 +39,21 @@ class TRADE(object):
                 df = pd.DataFrame(stock_data)
                 ema20 = ta.ema(df[6], length=20)
                 ema50 = ta.ema(df[6], length=50)
+                rsi = ta.rsi(df[6], length=14).iloc[-1]
 
                 buyORSell = None
 
                 if len(ema20) > 1 and len(ema50) > 1 :
-                    if ema20.iloc[-2] < ema50.iloc[-2] and ema20.iloc[-1] > ema50.iloc[-1] :
+                    if ema20.iloc[-2] < ema50.iloc[-2] and ema20.iloc[-1] > ema50.iloc[-1] and rsi > 50 :
                         #up crossover
                         #buyORSell = "BUY"
                         buyORSell = None #Disable BUY trades on emacrossover
-                    elif ema20.iloc[-2] > ema50.iloc[-2] and ema20.iloc[-1] < ema50.iloc[-1] :
+                    elif ema20.iloc[-2] > ema50.iloc[-2] and ema20.iloc[-1] < ema50.iloc[-1] and rsi < 50:
                         #down crossover
                         buyORSell = "SELL"
                 
                 if buyORSell:
-                    trades.append("EmaCrossover," + str(token) + "," + stock_data[-1][1] + "," + buyORSell)
+                    trades.append("EmaCrossover," + str(token) + "," + stock_data[-1][1] + "," + buyORSell + "," + str(ema20.iloc[-1]))
             
             except Exception as se:
                 UTIL.append_log_line("Error : emacrossover_____" + str(se) + " __ " + str(token))

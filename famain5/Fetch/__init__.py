@@ -16,8 +16,9 @@ def main(mytimer: func.TimerRequest) -> None:
     if mytimer.past_due:
         logging.info('The timer is past due!')
     
+    UTIL.reset_log_lines()
     UTIL.append_log_line("_________________________________________________________________")
-    UTIL.append_log_line(str(datetime.now()) + "AlgoTrade : Start __--..>>~~^^*****>>>>>>^^^^^^^^^^")
+    UTIL.append_log_line(datetime.now(pytz.timezone("Asia/Calcutta")).strftime('%Y-%m-%d %H:%M:%S') + " AlgoTrade : Start __--..>>~~^^*****>>>>>>^^^^^^^^^^")
     UTIL.append_log_line("_________________________________________________________________")
 
     stocks_input = "stocks.csv"
@@ -46,15 +47,19 @@ def main(mytimer: func.TimerRequest) -> None:
         UTIL.append_log_line("Fund Balance loaded from Azure Blob. Fund Balance=" + fundBalance)
         os.remove(os.path.join('', '/tmp/' + fund_balance_file_name))
     
-    trade_time_flag = (current_hour == 9 and current_minute > 29) or (current_hour >= 10 and current_hour <= 13) or (current_hour == 14 and current_minute < 35)
+    fundBalance = 500
+    UTIL.append_log_line("|||||||||||||| Overriding Fund Balance=" + fundBalance)
+    
+    trade_time_flag = (current_hour == 9 and current_minute > 44) or (current_hour >= 10 and current_hour <= 13) or (current_hour == 14 and current_minute < 20)
 
-    if True or trade_time_flag :
+    if trade_time_flag :
         all_stocks_historical_data = {}
+        start = datetime.now()
         for i, stock in enumerate(all_stocks):
             try :
                 #logging.info("Trade : token >> " + str(i) + " >> " + str(stock[0]) + "_" + str(stock[1]))
                 if (i + 1) % 3 == 0:
-                    time.sleep(1.1)
+                    time.sleep(0.8)
 
                 stock_data = UTIL.fetch_historical_data(smartAPI, stock[0], stock[1], 7, "FIFTEEN_MINUTE")
 
@@ -63,19 +68,21 @@ def main(mytimer: func.TimerRequest) -> None:
             except Exception as se:
                 UTIL.append_log_line("Error : Fetch_____" + str(se) + " __ " + str(stock[0]) + "_" + str(stock[1]))
         
-        UTIL.append_log_line("Historical Data Loaded...............................")
+        time_taken = datetime.now() - start
+        UTIL.append_log_line("Historical Data Loaded..............................." + str(len(all_stocks_historical_data)) + "...........time=" + str(time_taken))
 
         trades = TRADE.find_trades(all_stocks_historical_data)
         UTIL.execute_trades(smartAPI, trades, fundBalance)
         
         TRADE.trail_stop_loss(smartAPI)
     
-    squareoff_time_flag = (current_hour == 14 and current_minute > 44) or (current_hour == 15)
+    squareoff_time_flag = (current_hour == 15)
     if squareoff_time_flag :
         TRADE.square_off_all(smartAPI)
     
-    UTIL.append_log_line(str(datetime.now()) + "AlgoTrade : Finish __--..>>~~^^*****>>>>>>^^^^^^^^^^")
-    UTIL.append_log_line('Fetch : Analyze : Trade : Complete........................!!')
+    UTIL.append_log_line("_________________________________________________________________")
+    UTIL.append_log_line(datetime.now(pytz.timezone("Asia/Calcutta")).strftime('%Y-%m-%d %H:%M:%S') + " AlgoTrade : Finish __--..>>~~^^*****>>>>>>^^^^^^^^^^")
+    UTIL.append_log_line("_________________________________________________________________")
 
     #Write Log to Azure
     log_file_name = datetime.now().strftime('%Y%m%d') + '.log'
@@ -85,7 +92,6 @@ def main(mytimer: func.TimerRequest) -> None:
         log_file_text = open("/tmp/" + log_file_name, "r").read().strip()
         log_file_text = log_file_text + '\n\n_________________________________________________________________\n\n'
         log_file_text = log_file_text +  '\n'.join(UTIL.LOG_LINES)
-        os.remove(os.path.join('', '/tmp/' + log_file_name))
     else :
         log_file_text = '\n'.join(UTIL.LOG_LINES)
     
@@ -93,5 +99,7 @@ def main(mytimer: func.TimerRequest) -> None:
         f.write(log_file_text)
     
     AZUREUTIL.save_file(log_file_name, "trades")
-
+    if os.path.exists('/tmp/' + log_file_name):
+        os.remove(os.path.join('', '/tmp/' + log_file_name))
+    
     logging.info('Fetch : Analyze : Trade : Complete !!!!!!!!!!!!!!!!!!')

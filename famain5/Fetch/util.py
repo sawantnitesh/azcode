@@ -14,8 +14,12 @@ import time
 class UTIL(object):
 
     LOG_LINES = []
-    TRADE_SETUP_COUNT = 4
+    TRADE_SETUP_COUNT = 5
 
+    @staticmethod
+    def reset_log_lines():
+        UTIL.LOG_LINES = []
+    
     @staticmethod
     def append_log_line(log_object):
         UTIL.LOG_LINES.append(str(log_object))
@@ -32,7 +36,7 @@ class UTIL(object):
         return smartApi
     
     @staticmethod
-    def fetch_historical_data(smartAPI, token, symbol, timedelta_days, interval="ONE_HOUR"):
+    def fetch_historical_data(smartAPI, token, symbol, timedelta_days, interval):
 
         todays_date = datetime.now()
         previous_date = todays_date - timedelta(timedelta_days)
@@ -57,25 +61,28 @@ class UTIL(object):
         trade_intraday_cap = (float(fund_balance) / UTIL.TRADE_SETUP_COUNT) * 4
         
         for trade in trades:
-            #EmaCrossover,20374,COALINDIA-EQ,BUY
+            #EmaCrossover,20374,COALINDIA-EQ,SELL,501
 
             try :
                 trade_info = trade.split(',')
 
                 ltpData = smartAPI.ltpData("NSE", trade_info[2], trade_info[1])
                 ltp = ltpData['data']['ltp']
+                
+                ema20_price = float(trade_info[4])
+                order_price = math.ceil(ltp + ema20_price)/2
 
                 quantity = math.floor(trade_intraday_cap / ltp)
 
                 if trade_info[1] == "BUY" :
-                    target = math.ceil(ltp + ltp*0.02)
-                    stoploss_price = math.floor(ltp - ltp*0.01)
+                    target = math.ceil(order_price + order_price*0.02)
+                    stoploss_price = math.floor(order_price - order_price*0.01)
                 else :
-                    target = math.ceil(ltp - ltp*0.02)
-                    stoploss_price = math.floor(ltp + ltp*0.01)
+                    target = math.ceil(order_price - order_price*0.02)
+                    stoploss_price = math.floor(order_price + order_price*0.01)
                 
-                squareoff = abs(math.ceil(ltp) - target)
-                stoploss = abs(math.ceil(ltp) - stoploss_price)
+                squareoff = abs(math.ceil(order_price) - target)
+                stoploss = abs(math.floor(order_price) - stoploss_price)
                 
                 orderParam = {
                     "exchange": "NSE",
@@ -88,7 +95,7 @@ class UTIL(object):
                     "duration": "DAY",
                     "quantity": quantity,
                     "producttype": "INTRADAY",
-                    "price":ltp,
+                    "price":order_price,
                     "squareoff":squareoff,
                     "stoploss":stoploss,
                     "trailingStopLoss":1
