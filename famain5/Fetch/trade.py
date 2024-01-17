@@ -67,7 +67,7 @@ class TRADE(object):
                 if order['status'] == 'open' and order['ordertype'] == 'LIMIT' and order['disclosedquantity'] == '0' :
                     order_last_update_time = datetime.strptime(order['updatetime'], "%d-%b-%Y %H:%M:%S")
                     time_diff = (datetime.now() - order_last_update_time).seconds
-                    if time_diff > 3600: #Cancel open order more than 1 hr old
+                    if time_diff >= 3600: #Cancel open order more than 1 hr old. Price is not reaching at desired level.
                         smartAPI.cancelOrder(order['orderid'],'ROBO')
                 
                 if (order['status'] == 'open' or order['status'] == 'trigger pending') and order['ordertype'] == 'STOPLOSS_LIMIT' :
@@ -93,7 +93,7 @@ class TRADE(object):
                                 new_trigger_price = math.ceil(ltp + ltp*0.01)
                                 order['triggerprice'] = new_trigger_price
                                 orderOutput = smartAPI.modifyOrder(order)
-                                UTIL.append_log_line("Trailing Stop Loss Order placed.............. ltp=" + str(ltp) + ".....new_trigger_price=" + str(new_trigger_price) + "...." + str(orderOutput))
+                                UTIL.append_log_line("Trailing Stop Loss Order placed.............. ltp=" + str(ltp) + ".....STOPLOSS_new_trigger_price=" + str(new_trigger_price) + "...." + str(orderOutput))
                             
                             time.sleep(0.5)
     

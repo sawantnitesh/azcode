@@ -26,7 +26,7 @@ def main(mytimer: func.TimerRequest) -> None:
     AZUREUTIL.get_file(stocks_input, "meta")
     df = pd.read_csv("/tmp/" + stocks_input, header=None)
     all_stocks = df.values.tolist()
-    UTIL.append_log_line("Save Model : stocks.csv loaded from azure container:meta..")
+    UTIL.append_log_line("stocks.csv loaded from azure container:meta..")
 
     smartAPI = UTIL.getSmartAPI()
 
@@ -47,11 +47,13 @@ def main(mytimer: func.TimerRequest) -> None:
         UTIL.append_log_line("Fund Balance loaded from Azure Blob. Fund Balance=" + fundBalance)
         os.remove(os.path.join('', '/tmp/' + fund_balance_file_name))
     
+    UTIL.FUND_BALANCE = fundBalance
+
     #Temporary
     #fundBalance = 500
     #UTIL.append_log_line("|||||||||||||| Overriding Fund Balance=" + str(fundBalance))
     
-    trade_time_flag = (current_hour == 11 and current_minute > 29) or (current_hour >= 12 and current_hour <= 13) or (current_hour == 14 and current_minute < 20)
+    trade_time_flag = (current_hour == 9 and current_minute > 44) or (current_hour >= 10 and current_hour <= 13) or (current_hour == 14 and current_minute < 20)
 
     #To test during out of live market hours.
     if AZUREUTIL.is_blob_exists("test_run.txt", "meta") :
@@ -75,7 +77,7 @@ def main(mytimer: func.TimerRequest) -> None:
                 UTIL.append_log_line("Error : Fetch_____" + str(se) + " __ " + str(stock[0]) + "_" + str(stock[1]))
         
         time_taken = datetime.now() - start
-        UTIL.append_log_line("Historical Data Loaded..............................." + str(len(all_stocks_historical_data)) + "...........time=" + str(time_taken))
+        UTIL.append_log_line("Historical Data Loaded for " + str(len(all_stocks_historical_data)) + " stocks.....................time=" + str(time_taken))
 
         trades = TRADE.find_trades(all_stocks_historical_data)
         UTIL.execute_trades(smartAPI, trades, fundBalance)
@@ -104,8 +106,14 @@ def main(mytimer: func.TimerRequest) -> None:
     with open('/tmp/' + log_file_name, 'w') as f:
         f.write(log_file_text)
     
-    AZUREUTIL.save_file(log_file_name, "trades")
-    if os.path.exists('/tmp/' + log_file_name):
-        os.remove(os.path.join('', '/tmp/' + log_file_name))
+    UTIL.upload_to_sftp('/tmp/' + log_file_name, 'log.txt')
+    
+    gain = UTIL.get_summary(smartAPI)
+    with open('/tmp/gain.txt', 'w') as f:
+        f.write(gain)
+    UTIL.upload_to_sftp('/tmp/gain.txt', 'gain.txt')
+    os.remove(os.path.join('', '/tmp/gain.txt'))
+
+    AZUREUTIL.save_file(log_file_name, "trades", True)
     
     logging.info('Fetch : Analyze : Trade : Complete !!!!!!!!!!!!!!!!!!')

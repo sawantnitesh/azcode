@@ -1,8 +1,4 @@
 import logging
-import json
-from urllib import request
-import pandas as pd
-#from SmartApi import SmartConnect
 from .smartConnect import SmartConnect
 import pyotp
 from datetime import datetime
@@ -10,11 +6,13 @@ from datetime import timedelta
 import pytz
 import math
 import time
+import pysftp
 
 class UTIL(object):
 
     LOG_LINES = []
     TRADE_SETUP_COUNT = 5
+    FUND_BALANCE = None
 
     @staticmethod
     def reset_log_lines():
@@ -34,6 +32,35 @@ class UTIL(object):
         totp = pyotp.TOTP(token).now()
         smartApi.generateSession(clientId, pwd, totp)
         return smartApi
+    
+    @staticmethod
+    def get_summary(smartAPI):
+        text = datetime.now(pytz.timezone("Asia/Calcutta")).strftime('%d-%b-%Y %H:%M')
+        text = text + "\n" + "Nitesh S | Proprietary Algo Trading Strategies"
+        text = text + "\n" + "Funds | " + str(UTIL.FUND_BALANCE)
+        
+        positions = smartAPI.position()
+        gain = 0
+        if positions['data'] :
+            for position in positions['data']:
+                if position['realised'] :
+                    gain = gain + float(position['realised'])
+                if position['unrealised'] :
+                    gain = gain + float(position['unrealised'])
+        if gain > 0:
+            text = text + "\n" + "Todays Profit | +" + str(gain)
+        else :
+            text = text + "\n" + "Todays Profit | " + str(gain)
+        return text
+    
+    @staticmethod
+    def upload_to_sftp(file_path, remote_path):
+        cnopts = pysftp.CnOpts()
+        cnopts.hostkeys = None   
+        with pysftp.Connection('31.170.161.108', port=65002, username='u571677883', password='aqpt$dfaadf#&FmEE_x8aaaa1111', cnopts=cnopts) as sftp:
+            with sftp.cd('/home/u571677883/domains/tradebom.com/public_html/data'):
+                logging.info('uploading to sftp' + file_path)
+                sftp.put(file_path, remote_path)
     
     @staticmethod
     def fetch_historical_data(smartAPI, token, symbol, timedelta_days, interval):
