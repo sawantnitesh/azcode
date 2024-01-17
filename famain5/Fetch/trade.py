@@ -37,23 +37,18 @@ class TRADE(object):
         for token, stock_data in all_stocks_historical_data.items():
             try:
                 df = pd.DataFrame(stock_data)
-                ema20 = ta.ema(df[6], length=20)
-                ema50 = ta.ema(df[6], length=50)
-                rsi = ta.rsi(df[6], length=14).iloc[-1]
+                ema1 = ta.ema(df[6], length=9)
+                ema2 = ta.ema(df[6], length=26)
 
                 buyORSell = None
 
-                if len(ema20) > 1 and len(ema50) > 1 :
-                    if ema20.iloc[-2] < ema50.iloc[-2] and ema20.iloc[-1] > ema50.iloc[-1] and rsi > 50 :
-                        #up crossover
-                        #buyORSell = "BUY"
-                        buyORSell = None #Disable BUY trades on emacrossover
-                    elif ema20.iloc[-2] > ema50.iloc[-2] and ema20.iloc[-1] < ema50.iloc[-1] and rsi < 50:
+                if len(ema1) > 1 and len(ema2) > 1 :
+                    if ema1.iloc[-5] > ema2.iloc[-5] and ema1.iloc[-4] > ema2.iloc[-4] and ema1.iloc[-2] > ema2.iloc[-2] and ema1.iloc[-1] <= ema2.iloc[-1] :
                         #down crossover
                         buyORSell = "SELL"
                 
                 if buyORSell:
-                    trades.append("EmaCrossover," + str(token) + "," + stock_data[-1][1] + "," + buyORSell + "," + str(ema20.iloc[-1]))
+                    trades.append("EmaCrossover," + str(token) + "," + stock_data[-1][1] + "," + buyORSell + "," + str(ema1.iloc[-1]))
             
             except Exception as se:
                 UTIL.append_log_line("Error : emacrossover_____" + str(se) + " __ " + str(token))
@@ -61,13 +56,20 @@ class TRADE(object):
         return trades
     
     @staticmethod
-    def trail_stop_loss(smartAPI):
+    def revisit_orderbook(smartAPI):
 
         ltp_map = {}
 
         order_book = smartAPI.orderBook()
         if order_book['data'] :
             for order in order_book['data']:
+                
+                if order['status'] == 'open' and order['ordertype'] == 'LIMIT' and order['disclosedquantity'] == '0' :
+                    order_last_update_time = datetime.strptime(order['updatetime'], "%d-%b-%Y %H:%M:%S")
+                    time_diff = (datetime.now() - order_last_update_time).seconds
+                    if time_diff > 3600: #Cancel open order more than 1 hr old
+                        smartAPI.cancelOrder(order['orderid'],'ROBO')
+                
                 if (order['status'] == 'open' or order['status'] == 'trigger pending') and order['ordertype'] == 'STOPLOSS_LIMIT' :
                     
                     order_last_update_time = datetime.strptime(order['updatetime'], "%d-%b-%Y %H:%M:%S")

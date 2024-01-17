@@ -69,8 +69,8 @@ class UTIL(object):
                 ltpData = smartAPI.ltpData("NSE", trade_info[2], trade_info[1])
                 ltp = ltpData['data']['ltp']
                 
-                ema20_price = float(trade_info[4])
-                order_price = math.ceil(ltp + ema20_price)/2
+                ema1_price = float(trade_info[4])
+                order_price = math.ceil(ltp + ema1_price)/2
 
                 quantity = math.floor(trade_intraday_cap / ltp)
 
