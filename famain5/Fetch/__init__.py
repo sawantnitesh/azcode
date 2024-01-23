@@ -17,9 +17,9 @@ def main(mytimer: func.TimerRequest) -> None:
         logging.info('The timer is past due!')
     
     UTIL.reset_log_lines()
-    UTIL.append_log_line("_________________________________________________________________")
-    UTIL.append_log_line(datetime.now(pytz.timezone("Asia/Calcutta")).strftime('%Y-%m-%d %H:%M:%S') + " AlgoTrade : Start __--..>>~~^^*****>>>>>>^^^^^^^^^^")
-    UTIL.append_log_line("_________________________________________________________________")
+    UTIL.append_log_line("_________________________________________________________________", True)
+    UTIL.append_log_line(datetime.now(pytz.timezone("Asia/Calcutta")).strftime('%Y-%m-%d %H:%M:%S') + " AlgoTrade : Start __--..>>~~^^*****>>>>>>^^^^^^^^^^", True)
+    UTIL.append_log_line("_________________________________________________________________", True)
 
     stocks_input = "stocks.csv"
     
@@ -50,14 +50,14 @@ def main(mytimer: func.TimerRequest) -> None:
     UTIL.FUND_BALANCE = fundBalance
 
     #Temporary
-    #fundBalance = 500
-    #UTIL.append_log_line("|||||||||||||| Overriding Fund Balance=" + str(fundBalance))
+    fundBalance = 500
+    UTIL.append_log_line("|||||||||||||| Overriding Fund Balance=" + str(fundBalance))
     
     trade_time_flag = (current_hour == 9 and current_minute > 44) or (current_hour >= 10 and current_hour <= 13) or (current_hour == 14 and current_minute < 20)
 
     #To test during out of live market hours.
     if AZUREUTIL.is_blob_exists("test_run.txt", "meta") :
-        UTIL.append_log_line("::::::::::::::::::::::::::::::::::::::::Testing Mode")
+        UTIL.append_log_line("::::::::::::::::::::::::::::::::::::::::Testing Mode", True)
         trade_time_flag = True
 
     if trade_time_flag :
@@ -77,7 +77,7 @@ def main(mytimer: func.TimerRequest) -> None:
                 UTIL.append_log_line("Error : Fetch_____" + str(se) + " __ " + str(stock[0]) + "_" + str(stock[1]))
         
         time_taken = datetime.now() - start
-        UTIL.append_log_line("Historical Data Loaded for " + str(len(all_stocks_historical_data)) + " stocks.....................time=" + str(time_taken))
+        UTIL.append_log_line("Historical Data Loaded for " + str(len(all_stocks_historical_data)) + " stocks.....................time=" + str(time_taken), True)
 
         trades = TRADE.find_trades(all_stocks_historical_data)
         UTIL.execute_trades(smartAPI, trades, fundBalance)
@@ -89,31 +89,9 @@ def main(mytimer: func.TimerRequest) -> None:
         TRADE.square_off_all(smartAPI)
     
     UTIL.append_log_line("_________________________________________________________________")
-    UTIL.append_log_line(datetime.now(pytz.timezone("Asia/Calcutta")).strftime('%Y-%m-%d %H:%M:%S') + " AlgoTrade : Finish __--..>>~~^^*****>>>>>>^^^^^^^^^^")
+    UTIL.append_log_line(datetime.now(pytz.timezone("Asia/Calcutta")).strftime('%Y-%m-%d %H:%M:%S') + " AlgoTrade : Finish __--..>>~~^^*****>>>>>>^^^^^^^^^^", True)
     UTIL.append_log_line("_________________________________________________________________")
 
-    #Write Log to Azure
-    log_file_name = datetime.now().strftime('%Y%m%d') + '.log'
-    log_file_text = None
-    if AZUREUTIL.is_blob_exists(log_file_name, "trades") :
-        AZUREUTIL.get_file(log_file_name, "trades")
-        log_file_text = open("/tmp/" + log_file_name, "r").read().strip()
-        log_file_text = log_file_text + '\n\n_________________________________________________________________\n\n'
-        log_file_text = log_file_text +  '\n'.join(UTIL.LOG_LINES)
-    else :
-        log_file_text = '\n'.join(UTIL.LOG_LINES)
-    
-    with open('/tmp/' + log_file_name, 'w') as f:
-        f.write(log_file_text)
-    
-    UTIL.upload_to_sftp('/tmp/' + log_file_name, 'log.txt')
-    
-    gain = UTIL.get_summary(smartAPI)
-    with open('/tmp/gain.txt', 'w') as f:
-        f.write(gain)
-    UTIL.upload_to_sftp('/tmp/gain.txt', 'gain.txt')
-    os.remove(os.path.join('', '/tmp/gain.txt'))
-
-    AZUREUTIL.save_file(log_file_name, "trades", True)
+    UTIL.save_logs()
     
     logging.info('Fetch : Analyze : Trade : Complete !!!!!!!!!!!!!!!!!!')

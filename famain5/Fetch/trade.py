@@ -19,9 +19,9 @@ class TRADE(object):
             if ema_crossover_trades :
                 trades.extend(ema_crossover_trades)
 
-            UTIL.append_log_line("trades found............" + str(len(trades)))
+            UTIL.append_log_line("trades found............" + str(len(trades)), True)
             for trade in trades:
-                UTIL.append_log_line(trade)
+                UTIL.append_log_line(trade, True)
             
             return trades
 

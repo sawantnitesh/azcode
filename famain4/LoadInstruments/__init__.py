@@ -13,7 +13,7 @@ def main(mytimer: func.TimerRequest) -> None:
     if mytimer.past_due:
         logging.info('The timer is past due!')
     
-    all_stocks_df = FETCH.fetch_nifty500_stocks()
+    all_stocks_df = FETCH.fetch_fno_stocks()
     all_stocks_df.to_csv("/tmp/stocks.csv", index=False, header=False)
     AZUREUTIL.save_file("stocks.csv", "meta")
 
