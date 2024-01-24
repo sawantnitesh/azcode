@@ -35,7 +35,7 @@ class FETCH(object):
             logging.exception("Error : FETCH.fetch_____" + str(e))
     
     @staticmethod
-    def fetch_nifty500_stocks():
+    def fetch_nifty_stocks(category):
         try:
 
             url = 'https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json'
@@ -48,8 +48,11 @@ class FETCH(object):
 
             df = df[["token", "symbol", "name"]]
 
-            df = df.loc[df['name'].isin(UTIL.NIFTY_500)]
-
+            if category == 'NIFTY_50':
+                df = df.loc[df['name'].isin(UTIL.NIFTY_50)]
+            elif category == 'NIFTY_500':
+                df = df.loc[df['name'].isin(UTIL.NIFTY_500)]
+            
             return df
         
         except Exception as e:

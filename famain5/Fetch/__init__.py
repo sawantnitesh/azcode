@@ -62,6 +62,7 @@ def main(mytimer: func.TimerRequest) -> None:
 
     if trade_time_flag :
         all_stocks_historical_data = {}
+        token_symbol_map = {}
         start = datetime.now()
         for i, stock in enumerate(all_stocks):
             try :
@@ -72,6 +73,7 @@ def main(mytimer: func.TimerRequest) -> None:
                 stock_data = UTIL.fetch_historical_data(smartAPI, stock[0], stock[1], 7, "FIFTEEN_MINUTE")
 
                 all_stocks_historical_data[stock[0]] = stock_data
+                token_symbol_map[stock[0]] = stock[1]
 
             except Exception as se:
                 UTIL.append_log_line("Error : Fetch_____" + str(se) + " __ " + str(stock[0]) + "_" + str(stock[1]))
@@ -91,7 +93,8 @@ def main(mytimer: func.TimerRequest) -> None:
     UTIL.append_log_line("_________________________________________________________________")
     UTIL.append_log_line(datetime.now(pytz.timezone("Asia/Calcutta")).strftime('%Y-%m-%d %H:%M:%S') + " AlgoTrade : Finish __--..>>~~^^*****>>>>>>^^^^^^^^^^", True)
     UTIL.append_log_line("_________________________________________________________________")
-
-    UTIL.save_logs()
+    
+    UTIL.save_historical_data(smartAPI, all_stocks_historical_data, token_symbol_map)
+    UTIL.save_logs(smartAPI)
     
     logging.info('Fetch : Analyze : Trade : Complete !!!!!!!!!!!!!!!!!!')

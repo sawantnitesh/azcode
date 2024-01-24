@@ -8,6 +8,7 @@ import math
 import time
 import pysftp
 import os
+import json
 
 from .azureutil import AZUREUTIL
 
@@ -41,10 +42,8 @@ class UTIL(object):
         return smartApi
     
     @staticmethod
-    def get_summary(smartAPI):
+    def get_summary(smartAPI, overall_gain):
         text = datetime.now(pytz.timezone("Asia/Calcutta")).strftime('%d-%b-%Y %H:%M')
-        text = text + "\n" + "Nitesh S | Proprietary Algo Trading Strategies"
-        text = text + "\n" + "Funds | " + str(UTIL.FUND_BALANCE)
         
         positions = smartAPI.position()
         gain = 0
@@ -54,10 +53,9 @@ class UTIL(object):
                     gain = gain + float(position['realised'])
                 if position['unrealised'] :
                     gain = gain + float(position['unrealised'])
-        if gain > 0:
-            text = text + "\n" + "Todays Profit | +" + str(gain)
-        else :
-            text = text + "\n" + "Todays Profit | " + str(gain)
+        
+        text = text + "\n" + str(gain)
+        text = text + "\n" + str(gain + overall_gain)
         return text
     
     @staticmethod
@@ -147,7 +145,7 @@ class UTIL(object):
                 UTIL.append_log_line("Error : TradeExecution_____" + str(se) + "_____" + trade)
 
     @staticmethod
-    def save_logs():
+    def save_logs(smartAPI):
         #Write Log to Azure
         log_file_name = datetime.now().strftime('%Y%m%d') + '.log'
         log_file_tradebom_name = datetime.now().strftime('%Y%m%d') + '_tradebom.log'
@@ -178,12 +176,51 @@ class UTIL(object):
         
         UTIL.upload_to_sftp('/tmp/' + log_file_tradebom_name, 'log.txt')
         
+        overall_gain = 0
+        if AZUREUTIL.is_blob_exists('gain.txt', "trades") :
+            AZUREUTIL.get_file('gain.txt', 'trades')
+            gain_text = open('/tmp/gain.txt', "r").read().strip()
+            overall_gain = gain_text.split('\n')[2].strip()#third line is overall gain
+        
+        gain_summary = UTIL.get_summary(smartAPI, float(overall_gain))
+        with open('/tmp/gain.txt', 'w') as f:
+            f.write(gain_summary)
+        UTIL.upload_to_sftp('/tmp/gain.txt', 'gain.txt')
+        
         AZUREUTIL.save_file(log_file_name, "trades", True)
         AZUREUTIL.save_file(log_file_tradebom_name, "trades", True)
+        AZUREUTIL.save_file('gain.txt', "trades", True)
+
+    @staticmethod
+    def save_historical_data(smartAPI, all_stocks_historical_data, token_symbol_map):
+
+        trimmed_historical_data = {}
+        for token, stock_data in all_stocks_historical_data.items():
+
+            latest_day_data = []
+            latest_day = None
+            
+            for stock in reversed(stock_data):
+
+                print(stock[2])
+                
+                if latest_day is None:
+                    latest_day = stock[2][0:10] #2021-11-16T09:15:00+05:30 >> 2021-11-16
+
+                if stock[2].startswith(latest_day):
+                    latest_day_data.append([stock[2], stock[6]])
+                else:
+                    previous_day_close = smartAPI.ltpData("NSE", token_symbol_map[token], token)['data']['close']
+                    latest_day_data.append(['-1', previous_day_close])
+                    time.sleep(0.2)
+                    break
+
+            latest_day_data.reverse()
+            trimmed_historical_data[token_symbol_map[token]] = latest_day_data
+
+        with open('/tmp/hist_json_data.json', 'w') as json_file:
+            json.dump(trimmed_historical_data, json_file, indent=4)
         
-        gain = UTIL.get_summary(smartAPI)
-        with open('/tmp/gain.txt', 'w') as f:
-            f.write(gain)
-        UTIL.upload_to_sftp('/tmp/gain.txt', 'gain.txt')
-        os.remove(os.path.join('', '/tmp/gain.txt'))
-        
+        UTIL.upload_to_sftp('/tmp/hist_json_data.json', 'hist_json_data.json')
+        AZUREUTIL.save_file('hist_json_data.json', "trades", True)
+    
