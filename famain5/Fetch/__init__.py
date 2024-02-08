@@ -35,13 +35,16 @@ def main(mytimer: func.TimerRequest) -> None:
     current_minute = todays_date.astimezone(pytz.timezone("Asia/Calcutta")).minute
     fundBalance = None
     fund_balance_file_name = "fund_balance.txt"
+
     if (current_hour == 9 and current_minute < 30) :
         fundBalance = smartAPI.rmsLimit()['data']['net']
         with open('/tmp/' + fund_balance_file_name, 'w') as f:
             f.write(fundBalance)
         AZUREUTIL.save_file(fund_balance_file_name, "meta", True)
         UTIL.append_log_line("Fund Balance loaded from Angel. Saved to Azure Blob. Fund Balance=" + fundBalance)
-    else : 
+        AZUREUTIL.save_file(fund_balance_file_name, "meta", True)
+        UTIL.set_overall_gain()
+    else :
         AZUREUTIL.get_file(fund_balance_file_name, "meta")
         fundBalance = open("/tmp/" + fund_balance_file_name, "r").read().strip()
         UTIL.append_log_line("Fund Balance loaded from Azure Blob. Fund Balance=" + fundBalance)
@@ -50,7 +53,7 @@ def main(mytimer: func.TimerRequest) -> None:
     UTIL.FUND_BALANCE = fundBalance
 
     #Temporary
-    fundBalance = 500
+    fundBalance = 2000
     UTIL.append_log_line("|||||||||||||| Overriding Fund Balance=" + str(fundBalance))
     
     trade_time_flag = (current_hour == 9 and current_minute > 44) or (current_hour >= 10 and current_hour <= 13) or (current_hour == 14 and current_minute < 20)
@@ -60,9 +63,11 @@ def main(mytimer: func.TimerRequest) -> None:
         UTIL.append_log_line("::::::::::::::::::::::::::::::::::::::::Testing Mode", True)
         trade_time_flag = True
 
+    all_stocks_historical_data = {}
+    token_symbol_map = {}
+
     if trade_time_flag :
-        all_stocks_historical_data = {}
-        token_symbol_map = {}
+        
         start = datetime.now()
         for i, stock in enumerate(all_stocks):
             try :
@@ -94,7 +99,9 @@ def main(mytimer: func.TimerRequest) -> None:
     UTIL.append_log_line(datetime.now(pytz.timezone("Asia/Calcutta")).strftime('%Y-%m-%d %H:%M:%S') + " AlgoTrade : Finish __--..>>~~^^*****>>>>>>^^^^^^^^^^", True)
     UTIL.append_log_line("_________________________________________________________________")
     
-    UTIL.save_historical_data(smartAPI, all_stocks_historical_data, token_symbol_map)
+    if len(all_stocks_historical_data) > 0:
+        UTIL.save_historical_data(smartAPI, all_stocks_historical_data, token_symbol_map)
+    
     UTIL.save_logs(smartAPI)
     
     logging.info('Fetch : Analyze : Trade : Complete !!!!!!!!!!!!!!!!!!')

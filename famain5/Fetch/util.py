@@ -9,6 +9,7 @@ import time
 import pysftp
 import os
 import json
+import pandas as pd
 
 from .azureutil import AZUREUTIL
 
@@ -16,7 +17,7 @@ class UTIL(object):
 
     LOG_LINES = []
     TRADE_BOM_LOG_LINES = []
-    TRADE_SETUP_COUNT = 5
+    TRADE_SETUP_COUNT = 2
     FUND_BALANCE = None
 
     @staticmethod
@@ -54,8 +55,8 @@ class UTIL(object):
                 if position['unrealised'] :
                     gain = gain + float(position['unrealised'])
         
-        text = text + "\n" + str(gain)
-        text = text + "\n" + str(gain + overall_gain)
+        text = text + "\n" + str(round(gain,2))
+        text = text + "\n" + str(round(gain + overall_gain,2))
         return text
     
     @staticmethod
@@ -143,7 +144,20 @@ class UTIL(object):
             
             except Exception as se:
                 UTIL.append_log_line("Error : TradeExecution_____" + str(se) + "_____" + trade)
-
+    
+    @staticmethod
+    def set_overall_gain():
+        overall_gain = 0
+        if AZUREUTIL.is_blob_exists('gain.txt', "trades") :
+            AZUREUTIL.get_file('gain.txt', 'trades')
+            gain_text = open('/tmp/gain.txt', "r").read().strip()
+            overall_gain = float(gain_text.split('\n')[2].strip())
+            os.remove(os.path.join('', '/tmp/gain.txt'))
+        
+        with open('/tmp/overall_gain.txt', 'w') as f:
+            f.write(str(round(overall_gain,2)))
+        AZUREUTIL.save_file('overall_gain.txt', "trades", True)
+    
     @staticmethod
     def save_logs(smartAPI):
         #Write Log to Azure
@@ -163,7 +177,7 @@ class UTIL(object):
         if AZUREUTIL.is_blob_exists(log_file_tradebom_name, "trades") :
             AZUREUTIL.get_file(log_file_tradebom_name, "trades")
             log_file_tradebom_text = open("/tmp/" + log_file_tradebom_name, "r").read().strip()
-            log_file_tradebom_text = log_file_text + '\n\n_________________________________________________________________\n\n'
+            log_file_tradebom_text = log_file_tradebom_text + '\n\n_________________________________________________________________\n\n'
             log_file_tradebom_text = log_file_tradebom_text +  '\n'.join(UTIL.TRADE_BOM_LOG_LINES)
         else :
             log_file_tradebom_text = '\n'.join(UTIL.TRADE_BOM_LOG_LINES)
@@ -177,12 +191,12 @@ class UTIL(object):
         UTIL.upload_to_sftp('/tmp/' + log_file_tradebom_name, 'log.txt')
         
         overall_gain = 0
-        if AZUREUTIL.is_blob_exists('gain.txt', "trades") :
-            AZUREUTIL.get_file('gain.txt', 'trades')
-            gain_text = open('/tmp/gain.txt', "r").read().strip()
-            overall_gain = gain_text.split('\n')[2].strip()#third line is overall gain
+        if AZUREUTIL.is_blob_exists('overall_gain.txt', "trades") :
+            AZUREUTIL.get_file('overall_gain.txt', 'trades')
+            overall_gain_text = open('/tmp/overall_gain.txt', "r").read().strip()
+            overall_gain = float(overall_gain_text.strip())
         
-        gain_summary = UTIL.get_summary(smartAPI, float(overall_gain))
+        gain_summary = UTIL.get_summary(smartAPI, overall_gain)
         with open('/tmp/gain.txt', 'w') as f:
             f.write(gain_summary)
         UTIL.upload_to_sftp('/tmp/gain.txt', 'gain.txt')
@@ -194,12 +208,14 @@ class UTIL(object):
     @staticmethod
     def save_historical_data(smartAPI, all_stocks_historical_data, token_symbol_map):
 
-        trimmed_historical_data = {}
+        trimmed_historical_data = []
         for token, stock_data in all_stocks_historical_data.items():
 
+            symbol = token_symbol_map[token]
             latest_day_data = []
             latest_day = None
-            
+            previous_day_close = -1
+
             for stock in reversed(stock_data):
 
                 print(stock[2])
@@ -208,19 +224,32 @@ class UTIL(object):
                     latest_day = stock[2][0:10] #2021-11-16T09:15:00+05:30 >> 2021-11-16
 
                 if stock[2].startswith(latest_day):
-                    latest_day_data.append([stock[2], stock[6]])
+                    latest_day_data.append([symbol, stock[2], stock[6], 0])
+                    previous_day_close = stock[6]
                 else:
-                    previous_day_close = smartAPI.ltpData("NSE", token_symbol_map[token], token)['data']['close']
-                    latest_day_data.append(['-1', previous_day_close])
+                    i = 0
+                    while i < 4:
+                        i += 1
+                        try:
+                            previous_day_close = smartAPI.ltpData("NSE", symbol, token)['data']['close']
+                            break
+                        except Exception as se:
+                            UTIL.append_log_line("Error : error getLtpData_____attempt number=" + str(i) + "________" + str(se) + " __ " + str(token))
+                            time.sleep(1)
+                            continue
+                    
                     time.sleep(0.2)
                     break
+            
+            for price_data in latest_day_data:
+                price_data[3] = round(((price_data[2] - previous_day_close)/previous_day_close)*100,2)
 
             latest_day_data.reverse()
-            trimmed_historical_data[token_symbol_map[token]] = latest_day_data
-
-        with open('/tmp/hist_json_data.json', 'w') as json_file:
-            json.dump(trimmed_historical_data, json_file, indent=4)
+            trimmed_historical_data.extend(latest_day_data)
         
-        UTIL.upload_to_sftp('/tmp/hist_json_data.json', 'hist_json_data.json')
-        AZUREUTIL.save_file('hist_json_data.json', "trades", True)
+        df = pd.DataFrame(trimmed_historical_data, columns=['Name', 'Date', 'Price', 'Percentchange'])
+        df.to_csv('/tmp/nifty_prices.csv', index=False)
+        
+        UTIL.upload_to_sftp('/tmp/nifty_prices.csv', 'nifty_prices.csv')
+        AZUREUTIL.save_file('nifty_prices.csv', "trades", True)
     

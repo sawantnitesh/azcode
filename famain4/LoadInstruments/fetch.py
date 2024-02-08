@@ -8,12 +8,15 @@ from .util import UTIL
 class FETCH(object):
 
     @staticmethod
-    def fetch_fno_stocks():
-        try:
+    def get_allscrips():
+        url = 'https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json'
+        data = request.urlopen(url).read()
+        allscrips = json.loads(data)
+        return allscrips
 
-            url = 'https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json'
-            data = request.urlopen(url).read()
-            allscrips = json.loads(data)
+    @staticmethod
+    def fetch_fno_stocks(allscrips):
+        try:
 
             df = pd.DataFrame(allscrips, index=None)
             df = df.loc[df['symbol'].str.contains('-EQ') & ~(df['symbol'].str.contains('TEST'))]
@@ -35,12 +38,8 @@ class FETCH(object):
             logging.exception("Error : FETCH.fetch_____" + str(e))
     
     @staticmethod
-    def fetch_nifty_stocks(category):
+    def fetch_nifty_stocks(allscrips, category):
         try:
-
-            url = 'https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json'
-            data = request.urlopen(url).read()
-            allscrips = json.loads(data)
 
             df = pd.DataFrame(allscrips, index=None)
             df = df.loc[df['symbol'].str.contains('-EQ') & ~(df['symbol'].str.contains('TEST'))]
@@ -52,6 +51,8 @@ class FETCH(object):
                 df = df.loc[df['name'].isin(UTIL.NIFTY_50)]
             elif category == 'NIFTY_500':
                 df = df.loc[df['name'].isin(UTIL.NIFTY_500)]
+            elif category == 'BANK_NIFTY':
+                df = df.loc[df['name'].isin(UTIL.BANK_NIFTY)]
             
             return df
         

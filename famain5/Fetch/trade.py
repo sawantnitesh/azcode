@@ -4,6 +4,7 @@ import pandas_ta as ta
 from datetime import datetime
 import math
 import time
+import pytz
 
 from .util import UTIL
 
@@ -42,8 +43,16 @@ class TRADE(object):
 
                 buyORSell = None
 
-                if len(ema1) > 1 and len(ema2) > 1 :
-                    if ema1.iloc[-5] > ema2.iloc[-5] and ema1.iloc[-4] > ema2.iloc[-4] and ema1.iloc[-2] > ema2.iloc[-2] and ema1.iloc[-1] <= ema2.iloc[-1] :
+                if len(ema1) > 10 and len(ema2) > 10 :
+                    i = -10
+                    sell_signal = True
+                    while (i <= -2) :
+                        if ema1.iloc[i] <= ema2.iloc[i] :
+                            sell_signal = False
+                            break
+                        i = i+1
+                    
+                    if sell_signal and ema1.iloc[-1] <= ema2.iloc[-1] :
                         #down crossover
                         buyORSell = "SELL"
                 
@@ -66,8 +75,10 @@ class TRADE(object):
                 
                 if order['status'] == 'open' and order['ordertype'] == 'LIMIT' and order['disclosedquantity'] == '0' :
                     order_last_update_time = datetime.strptime(order['updatetime'], "%d-%b-%Y %H:%M:%S")
-                    time_diff = (datetime.now() - order_last_update_time).seconds
+                    current_time = datetime.strptime(datetime.now(pytz.timezone("Asia/Calcutta")).strftime('%d-%b-%Y %H:%M:%S'), "%d-%b-%Y %H:%M:%S")
+                    time_diff = (current_time - order_last_update_time).seconds
                     if time_diff >= 3600: #Cancel open order more than 1 hr old. Price is not reaching at desired level.
+                        UTIL.append_log_line('Cancelling Order 1 hr old order : ....... ' + str(order))
                         smartAPI.cancelOrder(order['orderid'],'ROBO')
                 
                 if (order['status'] == 'open' or order['status'] == 'trigger pending') and order['ordertype'] == 'STOPLOSS_LIMIT' :

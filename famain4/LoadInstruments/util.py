@@ -52,7 +52,21 @@ class UTIL(object):
                     "UPL",
                     "ULTRACEMCO",
                     "WIPRO"]
-
+    
+    #Bank Nifty stock names from NSE website
+    BANK_NIFTY = ["AUBANK",
+                    "AXISBANK",
+                    "BANDHANBNK",
+                    "BANKBARODA",
+                    "FEDERALBNK",
+                    "HDFCBANK",
+                    "ICICIBANK",
+                    "IDFCFIRSTB",
+                    "INDUSINDBK",
+                    "KOTAKBANK",
+                    "PNB",
+                    "SBIN"]
+    
     #NIFTY 500 stock names from NSE website
     NIFTY_500 = ["360ONE",
                     "3MINDIA",
