@@ -83,6 +83,16 @@ def main(mytimer: func.TimerRequest) -> None:
             except Exception as se:
                 UTIL.append_log_line("Error : Fetch_____" + str(se) + " __ " + str(stock[0]) + "_" + str(stock[1]))
         
+        #Fetch Nifty Historical Data
+        time.sleep(1)
+        nifty_data = UTIL.fetch_historical_data(smartAPI, "99926000", "NIFTY", 7, "FIFTEEN_MINUTE")
+        all_stocks_historical_data["99926000"] = nifty_data
+        token_symbol_map["99926000"] = "NIFTY"
+        #Fetch BankNifty Historical Data
+        banknifty_data = UTIL.fetch_historical_data(smartAPI, "99926009", "BANKNIFTY", 7, "FIFTEEN_MINUTE")
+        all_stocks_historical_data["99926009"] = banknifty_data
+        token_symbol_map["99926009"] = "BANKNIFTY"
+        
         time_taken = datetime.now() - start
         UTIL.append_log_line("Historical Data Loaded for " + str(len(all_stocks_historical_data)) + " stocks.....................time=" + str(time_taken), True)
 
