@@ -1,4 +1,3 @@
-import datetime
 import logging
 import azure.functions as func
 import time
@@ -42,8 +41,8 @@ def main(mytimer: func.TimerRequest) -> None:
             f.write(fundBalance)
         AZUREUTIL.save_file(fund_balance_file_name, "meta", True)
         UTIL.append_log_line("Fund Balance loaded from Angel. Saved to Azure Blob. Fund Balance=" + fundBalance)
-        AZUREUTIL.save_file(fund_balance_file_name, "meta", True)
         UTIL.set_overall_gain()
+        UTIL.save_meta(smartAPI)
     else :
         AZUREUTIL.get_file(fund_balance_file_name, "meta")
         fundBalance = open("/tmp/" + fund_balance_file_name, "r").read().strip()

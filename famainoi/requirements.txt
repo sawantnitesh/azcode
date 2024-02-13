@@ -7,3 +7,4 @@ pandas
 azure-storage-blob
 pytz
 requests
+pysftp
