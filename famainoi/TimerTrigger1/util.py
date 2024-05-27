@@ -6,6 +6,7 @@ import pytz
 import pandas as pd
 import os
 from datetime import datetime
+import pysftp
 
 from .azureutil import AZUREUTIL
 
@@ -31,18 +32,14 @@ class UTIL(object):
         oi_rows = []
         current_time = datetime.now(pytz.timezone("Asia/Calcutta")).strftime('%H:%M')
         
-        nifty_lower_bound, nifty_upper_bound = UTIL.find_lower_upper_bound()
-
         for d in oi_data:
             if d['expiryDate'] == expiry_date:
                 if 'CE' in d:
                     oi_d = d['CE']
-                    if oi_d['strikePrice'] >= nifty_lower_bound and oi_d['strikePrice'] <= nifty_upper_bound :
-                        oi_rows.append([-1,current_time, oi_d['strikePrice'], 'CE', oi_d['openInterest'], oi_d['lastPrice']])
+                    oi_rows.append([-1,current_time, oi_d['strikePrice'], 'CE', oi_d['openInterest'], oi_d['lastPrice']])
                 if 'PE' in d:
                     oi_d = d['PE']
-                    if oi_d['strikePrice'] >= nifty_lower_bound and oi_d['strikePrice'] <= nifty_upper_bound :
-                        oi_rows.append([-1,current_time, oi_d['strikePrice'], 'PE', oi_d['openInterest'], oi_d['lastPrice']])
+                    oi_rows.append([-1,current_time, oi_d['strikePrice'], 'PE', oi_d['openInterest'], oi_d['lastPrice']])
         
         df = pd.DataFrame(oi_rows, index=None, columns=['Sr','time','strike', 'CEPE', 'oi', 'price'])
         
@@ -58,11 +55,49 @@ class UTIL(object):
         df_all['Sr'] = range(1, len(df_all)+1)
 
         df_all.to_csv('/tmp/oi_data.csv', index=False)
-        AZUREUTIL.save_file('oi_data.csv', "oidata", True)
         UTIL.upload_to_sftp('/tmp/oi_data.csv', 'oi_data.csv')
-
+        AZUREUTIL.save_file('oi_data.csv', "oidata", True)
+        
         logging.info("OI Data Saved____________________:ExpiryDate=" + expiry_date)
     
+
+    @staticmethod
+    def analyze_oi():
+
+        AZUREUTIL.get_file("meta.csv", "meta")
+        df_meta = pd.read_csv("/tmp/meta.csv")
+        os.remove(os.path.join('', '/tmp/meta.csv'))
+        nifty_price = df_meta[df_meta['key'] == 'nifty_price']['value'][0]
+
+        df_all = pd.read_csv("/tmp/oi_data.csv")
+        os.remove(os.path.join('', '/tmp/oi_data.csv'))
+        
+        all_strikes = df_all['strike'].unique()
+        result = filter(lambda x: abs(x - nifty_price) <= 100, all_strikes)
+        strikes = list(result)
+
+        for strike in strikes :
+            df_ce = df_all[(df_all['strike'] == strike) & (df_all['CEPE'] == 'CE')][-2:]    
+            df_pe = df_all[(df_all['strike'] == strike) & (df_all['CEPE'] == 'PE')][-2:]
+            
+            ce_oi1 = df_ce[-2:]['oi'].iloc[0]
+            ce_oi2 = df_ce[-1:]['oi'].iloc[0]
+            
+            pe_oi1 = df_pe[-2:]['oi'].iloc[0]
+            pe_oi2 = df_pe[-1:]['oi'].iloc[0]
+            
+            oi_trades = "Direction,Strike,ce1,ce2,pe1,pe2\n"
+            if (ce_oi2/ce_oi1 >= 1.2 and pe_oi1/pe_oi2 >= 1.2) :
+                oi_trades = "DOWN", strike, ce_oi1, ce_oi2, pe_oi1, pe_oi2 + "\n"
+            if (ce_oi1/ce_oi2 >= 1.2 and pe_oi2/pe_oi1 >= 1.2) :
+                oi_trades = oi_trades + "UP", strike, ce_oi1, ce_oi2, pe_oi1, pe_oi2 + "\n"
+            
+            with open('/tmp/oi_trades.csv', 'w') as f:
+                f.write(oi_trades)
+            
+            UTIL.upload_to_sftp('/tmp/oi_trades.csv', 'oi_trades.csv')
+            AZUREUTIL.save_file('oi_trades.csv', "trades", True)
+
 
     @staticmethod
     def clean_up():
@@ -75,23 +110,6 @@ class UTIL(object):
                 archive_name = "oi_data_" + datetime.now(pytz.timezone("Asia/Calcutta")).strftime('%Y%m%d%H%M')+ ".csv"
                 AZUREUTIL.rename_file("oi_data.csv", archive_name, "oidata")
                 logging.info("Renamed oi_data.csv to " + archive_name)
-
-
-    @staticmethod
-    def find_lower_upper_bound():
-        nifty_lower_bound = 0
-        nifty_upper_bound = 99999999999
-        if AZUREUTIL.is_blob_exists('meta.txt', "meta") :
-            AZUREUTIL.get_file('meta.txt', 'meta')
-            meta_text = open('/tmp/meta.txt', "r").read().strip()
-            for keyvalue in meta_text.split('\n'):
-                kv = keyvalue.strip().split('=')
-                if kv[0].strip() == "NIFTY_OI_LOWER_BOUND":
-                    nifty_lower_bound = int(kv[1])
-                if kv[0].strip() == "NIFTY_OI_UPPER_BOUND":
-                    nifty_upper_bound = int(kv[1])
-        
-        return nifty_lower_bound, nifty_upper_bound
     
 
     @staticmethod
@@ -102,3 +120,4 @@ class UTIL(object):
             with sftp.cd('/home/u571677883/domains/tradebom.com/public_html/data'):
                 logging.info('uploading to sftp' + file_path)
                 sftp.put(file_path, remote_path)
+    

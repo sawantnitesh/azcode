@@ -42,13 +42,13 @@ def main(mytimer: func.TimerRequest) -> None:
         AZUREUTIL.save_file(fund_balance_file_name, "meta", True)
         UTIL.append_log_line("Fund Balance loaded from Angel. Saved to Azure Blob. Fund Balance=" + fundBalance)
         UTIL.set_overall_gain()
-        UTIL.save_meta(smartAPI)
     else :
         AZUREUTIL.get_file(fund_balance_file_name, "meta")
         fundBalance = open("/tmp/" + fund_balance_file_name, "r").read().strip()
         UTIL.append_log_line("Fund Balance loaded from Azure Blob. Fund Balance=" + fundBalance)
         os.remove(os.path.join('', '/tmp/' + fund_balance_file_name))
     
+    UTIL.save_meta(smartAPI)
     UTIL.FUND_BALANCE = fundBalance
 
     #Temporary

@@ -138,8 +138,9 @@ class UTIL(object):
 
                 time.sleep(0.5)
 
-                order_output = smartAPI.placeOrder(orderParam)
-
+                UTIL.append_log_line("NITESH..........Disabling Algo Trader Orders : Temporary.......................NITESH")
+                order_output = "" #smartAPI.placeOrder(orderParam)
+                
                 UTIL.append_log_line("order_output:" + str(order_output))
             
             except Exception as se:
@@ -158,30 +159,28 @@ class UTIL(object):
             f.write(str(round(overall_gain,2)))
         AZUREUTIL.save_file('overall_gain.txt', "trades", True)
     
-
+    
     @staticmethod
     def save_meta(smartAPI):
-        nifty_previous_day_close = 21500
+        nifty_price = -1
         i = 0
         while i < 4:
             i += 1
             try:
-                nifty_previous_day_close = smartAPI.ltpData("NSE", "NIFTY", "99926000")['data']['close']
+                nifty_price = smartAPI.ltpData("NSE", "NIFTY", "99926000")['data']['ltp']
                 break
             except Exception as se:
                 UTIL.append_log_line("Error : error getLtpData_____attempt number=" + str(i) + "________" + str(se) + " __ NIFTY")
                 time.sleep(1)
                 continue
         time.sleep(1)
-        offset = (nifty_previous_day_close * 0.0295)
-        nifty_oi_lower_bound = int((nifty_previous_day_close - offset)/100) * 100
-        nifty_oi_upper_bound = int((nifty_previous_day_close + offset)/100) * 100 + 100
 
-        meta_text = "NIFTY_OI_LOWER_BOUND=" + str(nifty_oi_lower_bound) + "\n"
-        meta_text = meta_text + "NIFTY_OI_UPPER_BOUND=" + str(nifty_oi_upper_bound) + "\n"
-        with open('/tmp/meta.txt', 'w') as f:
+        meta_text = "key,value\n"
+        meta_text = meta_text + "nifty_price," + str(nifty_price) + "\n"
+        with open('/tmp/meta.csv', 'w') as f:
             f.write(meta_text)
-        AZUREUTIL.save_file("meta.txt", "meta", True)
+        UTIL.upload_to_sftp('/tmp/meta.csv', 'meta.csv')
+        AZUREUTIL.save_file("meta.csv", "meta", True)
     
     
     @staticmethod
