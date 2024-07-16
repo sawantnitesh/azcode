@@ -20,12 +20,12 @@ def main(mytimer: func.TimerRequest) -> None:
     UTIL.append_log_line(datetime.now(pytz.timezone("Asia/Calcutta")).strftime('%Y-%m-%d %H:%M:%S') + " AlgoTrade : Start __--..>>~~^^*****>>>>>>^^^^^^^^^^", True)
     UTIL.append_log_line("_________________________________________________________________", True)
 
-    stocks_input = "stocks.csv"
+    stocks_input = "stocks_NIFTY_500.csv"
     
     AZUREUTIL.get_file(stocks_input, "meta")
     df = pd.read_csv("/tmp/" + stocks_input, header=None)
     all_stocks = df.values.tolist()
-    UTIL.append_log_line("stocks.csv loaded from azure container:meta..")
+    UTIL.append_log_line(stocks_input + " loaded from azure container:meta..")
 
     smartAPI = UTIL.getSmartAPI()
 
@@ -52,8 +52,8 @@ def main(mytimer: func.TimerRequest) -> None:
     UTIL.FUND_BALANCE = fundBalance
 
     #Temporary
-    fundBalance = 2000
-    UTIL.append_log_line("|||||||||||||| Overriding Fund Balance=" + str(fundBalance))
+    #fundBalance = 2000
+    #UTIL.append_log_line("|||||||||||||| Overriding Fund Balance=" + str(fundBalance))
     
     trade_time_flag = (current_hour == 9 and current_minute > 44) or (current_hour >= 10 and current_hour <= 13) or (current_hour == 14 and current_minute < 20)
 
@@ -74,7 +74,7 @@ def main(mytimer: func.TimerRequest) -> None:
                 if (i + 1) % 3 == 0:
                     time.sleep(0.8)
 
-                stock_data = UTIL.fetch_historical_data(smartAPI, stock[0], stock[1], 7, "FIFTEEN_MINUTE")
+                stock_data = UTIL.fetch_historical_data(smartAPI, stock[0], stock[1], 30, "FIFTEEN_MINUTE")
 
                 all_stocks_historical_data[stock[0]] = stock_data
                 token_symbol_map[stock[0]] = stock[1]

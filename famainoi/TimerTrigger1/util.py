@@ -34,12 +34,13 @@ class UTIL(object):
         
         for d in oi_data:
             if d['expiryDate'] == expiry_date:
-                if 'CE' in d:
-                    oi_d = d['CE']
-                    oi_rows.append([-1,current_time, oi_d['strikePrice'], 'CE', oi_d['openInterest'], oi_d['lastPrice']])
-                if 'PE' in d:
-                    oi_d = d['PE']
-                    oi_rows.append([-1,current_time, oi_d['strikePrice'], 'PE', oi_d['openInterest'], oi_d['lastPrice']])
+                if int(d['strikePrice'])%100 == 0:
+                    if 'CE' in d:
+                        oi_d = d['CE']
+                        oi_rows.append([-1,current_time, oi_d['strikePrice'], 'CE', oi_d['openInterest'], oi_d['lastPrice']])
+                    if 'PE' in d:
+                        oi_d = d['PE']
+                        oi_rows.append([-1,current_time, oi_d['strikePrice'], 'PE', oi_d['openInterest'], oi_d['lastPrice']])
         
         df = pd.DataFrame(oi_rows, index=None, columns=['Sr','time','strike', 'CEPE', 'oi', 'price'])
         

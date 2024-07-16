@@ -138,8 +138,8 @@ class UTIL(object):
 
                 time.sleep(0.5)
 
-                UTIL.append_log_line("NITESH..........Disabling Algo Trader Orders : Temporary.......................NITESH")
-                order_output = "" #smartAPI.placeOrder(orderParam)
+                #UTIL.append_log_line("NITESH..........Disabling Algo Trader Orders : Temporary.......................NITESH")
+                order_output = smartAPI.placeOrder(orderParam)
                 
                 UTIL.append_log_line("order_output:" + str(order_output))
             

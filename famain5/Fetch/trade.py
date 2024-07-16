@@ -38,21 +38,21 @@ class TRADE(object):
         for token, stock_data in all_stocks_historical_data.items():
             try:
                 df = pd.DataFrame(stock_data)
-                ema1 = ta.ema(df[6], length=9)
-                ema2 = ta.ema(df[6], length=26)
+                ema1 = ta.ema(df[6], length=20)
+                ema2 = ta.ema(df[6], length=100)
 
                 buyORSell = None
 
                 if len(ema1) > 10 and len(ema2) > 10 :
                     i = -10
                     sell_signal = True
-                    while (i <= -2) :
+                    while (i <= -3) :
                         if ema1.iloc[i] <= ema2.iloc[i] :
                             sell_signal = False
                             break
                         i = i+1
                     
-                    if sell_signal and ema1.iloc[-1] <= ema2.iloc[-1] :
+                    if sell_signal and ema1.iloc[-1] <= ema2.iloc[-1] and ema1.iloc[-2] < ema2.iloc[-2] :
                         #down crossover
                         buyORSell = "SELL"
                 
@@ -108,7 +108,6 @@ class TRADE(object):
                             
                             time.sleep(0.5)
     
-
     @staticmethod
     def square_off_all(smartAPI):
 
