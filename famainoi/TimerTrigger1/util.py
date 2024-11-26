@@ -15,7 +15,7 @@ class UTIL(object):
     @staticmethod
     def load_oi():
         
-        UTIL.clean_up()
+        UTIL.back_up()
 
         headers = {
             'User-Agent': 'My User Agent 1.0',
@@ -58,6 +58,8 @@ class UTIL(object):
         df_all.to_csv('/tmp/oi_data.csv', index=False)
         UTIL.upload_to_sftp('/tmp/oi_data.csv', 'oi_data.csv')
         AZUREUTIL.save_file('oi_data.csv', "oidata", True)
+
+        UTIL.write_oi_csv_meta_data_to_sftp()
         
         logging.info("OI Data Saved____________________:ExpiryDate=" + expiry_date)
     
@@ -88,9 +90,9 @@ class UTIL(object):
             pe_oi2 = df_pe[-1:]['oi'].iloc[0]
             
             oi_trades = "Direction,Strike,ce1,ce2,pe1,pe2\n"
-            if (ce_oi2/ce_oi1 >= 1.2 and pe_oi1/pe_oi2 >= 1.2) :
+            if (ce_oi2/ce_oi1 >= 1.15 and pe_oi1/pe_oi2 >= 1.15) :
                 oi_trades = "DOWN", strike, ce_oi1, ce_oi2, pe_oi1, pe_oi2 + "\n"
-            if (ce_oi1/ce_oi2 >= 1.2 and pe_oi2/pe_oi1 >= 1.2) :
+            if (ce_oi1/ce_oi2 >= 1.15 and pe_oi2/pe_oi1 >= 1.15) :
                 oi_trades = oi_trades + "UP", strike, ce_oi1, ce_oi2, pe_oi1, pe_oi2 + "\n"
             
             with open('/tmp/oi_trades.csv', 'w') as f:
@@ -101,16 +103,20 @@ class UTIL(object):
 
 
     @staticmethod
-    def clean_up():
+    def back_up():
         todays_date = datetime.now()
         current_hour = todays_date.astimezone(pytz.timezone("Asia/Calcutta")).hour
         current_minute = todays_date.astimezone(pytz.timezone("Asia/Calcutta")).minute
         
-        if (current_hour == 9 and current_minute < 30) :
+        if (current_hour == 9 and current_minute < 10) : #only backup at 9:00
             if AZUREUTIL.is_blob_exists("oi_data.csv", "oidata"):
                 archive_name = "oi_data_" + datetime.now(pytz.timezone("Asia/Calcutta")).strftime('%Y%m%d%H%M')+ ".csv"
                 AZUREUTIL.rename_file("oi_data.csv", archive_name, "oidata")
                 logging.info("Renamed oi_data.csv to " + archive_name)
+                
+                AZUREUTIL.get_file(archive_name, "oidata")
+                UTIL.upload_to_sftp('/tmp/' + archive_name, archive_name)
+                os.remove(os.path.join('', '/tmp/' + archive_name))
     
 
     @staticmethod
@@ -118,7 +124,23 @@ class UTIL(object):
         cnopts = pysftp.CnOpts()
         cnopts.hostkeys = None   
         with pysftp.Connection('31.170.161.108', port=65002, username='u571677883', password='aqpt$dfaadf#&FmEE_x8aaaa1111', cnopts=cnopts) as sftp:
-            with sftp.cd('/home/u571677883/domains/tradebom.com/public_html/data'):
+            with sftp.cd('/home/u571677883/domains/tradebom.com/public_html/data/oi'):
                 logging.info('uploading to sftp' + file_path)
                 sftp.put(file_path, remote_path)
     
+
+    @staticmethod
+    def write_oi_csv_meta_data_to_sftp():
+        cnopts = pysftp.CnOpts()
+        cnopts.hostkeys = None   
+        oi_csvs = []
+        with pysftp.Connection('31.170.161.108', port=65002, username='u571677883', password='aqpt$dfaadf#&FmEE_x8aaaa1111', cnopts=cnopts) as sftp:
+            with sftp.cd('/home/u571677883/domains/tradebom.com/public_html/data/oi'):
+                dirlist = sftp.listdir()
+                for dir in dirlist:
+                    if "oi_data_" in dir:
+                        oi_csvs.append(dir)
+
+        df = pd.DataFrame(oi_csvs, columns=["value"])
+        df.to_csv('/tmp/meta_oi.csv', index=False)
+        UTIL.upload_to_sftp('/tmp/meta_oi.csv', 'meta_oi.csv')

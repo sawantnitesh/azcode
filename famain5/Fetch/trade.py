@@ -38,8 +38,8 @@ class TRADE(object):
         for token, stock_data in all_stocks_historical_data.items():
             try:
                 df = pd.DataFrame(stock_data)
-                ema1 = ta.ema(df[6], length=20)
-                ema2 = ta.ema(df[6], length=100)
+                ema1 = ta.ema(df[6], length=50)
+                ema2 = ta.ema(df[6], length=200)
 
                 buyORSell = None
 

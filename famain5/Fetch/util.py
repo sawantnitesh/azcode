@@ -17,7 +17,7 @@ class UTIL(object):
 
     LOG_LINES = []
     TRADE_BOM_LOG_LINES = []
-    TRADE_SETUP_COUNT = 2
+    TRADE_SETUP_COUNT = 10
     FUND_BALANCE = None
 
     @staticmethod
@@ -91,7 +91,7 @@ class UTIL(object):
     @staticmethod
     def execute_trades(smartAPI, trades, fund_balance):
 
-        trade_intraday_cap = (float(fund_balance) / UTIL.TRADE_SETUP_COUNT) * 4
+        trade_intraday_cap = (float(fund_balance) / UTIL.TRADE_SETUP_COUNT) * 4.5
         
         for trade in trades:
             #EmaCrossover,20374,COALINDIA-EQ,SELL,501
@@ -114,8 +114,8 @@ class UTIL(object):
                     target = math.ceil(order_price - order_price*0.02)
                     stoploss_price = math.floor(order_price + order_price*0.01)
                 
-                squareoff = abs(math.ceil(order_price) - target)
-                stoploss = abs(math.floor(order_price) - stoploss_price)
+                squareoff = abs(math.ceil(order_price) - target) * 3
+                stoploss = abs(math.floor(order_price) - stoploss_price) * 3
                 
                 orderParam = {
                     "exchange": "NSE",
@@ -240,6 +240,7 @@ class UTIL(object):
             latest_day_data = []
             latest_day = None
             previous_day_close = -1
+            todays_date = datetime.today().strftime('%Y-%m-%d') #2021-11-16
 
             for stock in reversed(stock_data):
 
@@ -247,6 +248,9 @@ class UTIL(object):
                 
                 if latest_day is None:
                     latest_day = stock[2][0:10] #2021-11-16T09:15:00+05:30 >> 2021-11-16
+
+                if todays_date != latest_day : 
+                    continue
 
                 if stock[2].startswith(latest_day):
                     latest_day_data.append([symbol, stock[2], stock[6], 0])

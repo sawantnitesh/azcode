@@ -7,19 +7,19 @@ from requests import get
 import re, uuid
 import socket
 import os
-#import logzero
-#from logzero import logger
+#import #logzero
+#from #logzero import logger
 import time
-
+import ssl
 from SmartApi.version import __version__, __title__
 
 log = logging.getLogger(__name__)
 
 class SmartConnect(object):
     #_rootUrl = "https://openapisuat.angelbroking.com"
-    _rootUrl="https://apiconnect.angelbroking.com" #prod endpoint
+    _rootUrl="https://apiconnect.angelone.in" #prod endpoint
     #_login_url ="https://smartapi.angelbroking.com/login"
-    _login_url="https://smartapi.angelbroking.com/publisher-login" #prod endpoint
+    _login_url="https://smartapi.angelone.in/publisher-login" #prod endpoint
     _default_timeout = 7  # In seconds
 
     _routes = {
@@ -49,12 +49,23 @@ class SmartConnect(object):
         "api.gtt.list":"/rest/secure/angelbroking/gtt/v1/ruleList",
 
         "api.candle.data":"/rest/secure/angelbroking/historical/v1/getCandleData",
+        "api.oi.data":"/rest/secure/angelbroking/historical/v1/getOIData",
         "api.market.data":"/rest/secure/angelbroking/market/v1/quote",
         "api.search.scrip": "/rest/secure/angelbroking/order/v1/searchScrip",
         "api.allholding": "/rest/secure/angelbroking/portfolio/v1/getAllHolding",
 
         "api.individual.order.details": "/rest/secure/angelbroking/order/v1/details/",
-        "api.margin.api" : 'rest/secure/angelbroking/margin/v1/batch'
+        "api.margin.api" : 'rest/secure/angelbroking/margin/v1/batch',
+        "api.estimateCharges" : 'rest/secure/angelbroking/brokerage/v1/estimateCharges',
+        "api.verifyDis" : 'rest/secure/angelbroking/edis/v1/verifyDis',
+        "api.generateTPIN" : 'rest/secure/angelbroking/edis/v1/generateTPIN',
+        "api.getTranStatus" : 'rest/secure/angelbroking/edis/v1/getTranStatus',
+        "api.optionGreek" : 'rest/secure/angelbroking/marketData/v1/optionGreek',
+        "api.gainersLosers" : 'rest/secure/angelbroking/marketData/v1/gainersLosers',
+        "api.putCallRatio" : 'rest/secure/angelbroking/marketData/v1/putCallRatio',
+        "api.oIBuildup" : 'rest/secure/angelbroking/marketData/v1/OIBuildup',
+        "api.nseIntraday" : 'rest/secure/angelbroking/marketData/v1/nseIntraday',
+        "api.bseIntraday" : 'rest/secure/angelbroking/marketData/v1/bseIntraday',
     }
 
     try:
@@ -64,7 +75,7 @@ class SmartConnect(object):
         hostname = socket.gethostname()
         clientLocalIp=socket.gethostbyname(hostname)
     except Exception as e:
-        logging.exception(f"Exception while retriving IP Address,using local host IP address: {e}")
+        print(f"Exception while retriving IP Address,using local host IP address: {e}")
     finally:
         clientPublicIp="106.193.147.98"
         clientLocalIp="127.0.0.1"
@@ -93,24 +104,45 @@ class SmartConnect(object):
         self.accept=self.accept
         self.userType=self.userType
         self.sourceID=self.sourceID
+
+        # Create SSL context
+        self.ssl_context = ssl.create_default_context()
+        self.ssl_context.options |= ssl.OP_NO_TLSv1  # Disable TLS 1.0
+        self.ssl_context.options |= ssl.OP_NO_TLSv1_1  # Disable TLS 1.1
+
+        # Configure minimum TLS version to TLS 1.2
+        self.ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
+
+        if not disable_ssl:
+            self.reqsession = requests.Session()
+            if pool is not None:
+                reqadapter = requests.adapters.HTTPAdapter(**pool)
+                self.reqsession.mount("https://", reqadapter)
+            else:
+                reqadapter = requests.adapters.HTTPAdapter()
+                self.reqsession.mount("https://", reqadapter)
+            print(f"in pool")
+        else:
+            # If SSL is disabled, use the default SSL context
+            self.reqsession = requests
+            
         # Create a log folder based on the current date
         #log_folder = time.strftime("%Y-%m-%d", time.localtime())
         #log_folder_path = os.path.join("logs", log_folder)  # Construct the full path to the log folder
         #os.makedirs(log_folder_path, exist_ok=True) # Create the log folder if it doesn't exist
         #log_path = os.path.join(log_folder_path, "app.log") # Construct the full path to the log file
-        #logzero.logfile(log_path, loglevel=logging.INFO)  # Output logs to a date-wise log file
+        #logzero.logfile(log_path, loglevel=logging.ERROR)  # Output logs to a date-wise log file
 
         if pool:
             self.reqsession = requests.Session()
             reqadapter = requests.adapters.HTTPAdapter(**pool)
             self.reqsession.mount("https://", reqadapter)
-            logger.info(f"in pool")
+            print(f"in pool")
         else:
             self.reqsession = requests
 
         # disable requests SSL warning
         requests.packages.urllib3.disable_warnings()
-    
     def requestHeaders(self):
         return{
             "Content-type":self.accept,
@@ -186,6 +218,7 @@ class SmartConnect(object):
                                         proxies=self.proxies)
            
         except Exception as e:
+            print(f"Error occurred while making a {method} request to {url}. Headers: {headers}, Request: {params}, Response: {e}")
             raise e
 
         if self.debug:
@@ -209,7 +242,8 @@ class SmartConnect(object):
                 # native errors
                 exp = getattr(ex, data["error_type"], ex.GeneralException)
                 raise exp(data["message"], code=r.status_code)
-
+            if data.get("status",False) is False : 
+                print(f"Error occurred while making a {method} request to {url}. Error: {data['message']}. URL: {url}, Headers: {self.requestHeaders()}, Request: {params}, Response: {data}")
             return data
         elif "csv" in headers["Content-type"]:
             return r.content
@@ -300,9 +334,9 @@ class SmartConnect(object):
                 orderResponse = response['data']['orderid']
                 return orderResponse
             else:
-                logging.exception(f"Invalid response format: {response}")
+                print(f"Invalid response format: {response}")
         else:
-            logging.exception(f"API request failed: {response}")
+            print(f"API request failed: {response}")
         return None
 
     def placeOrderFullResponse(self,orderparams):
@@ -316,9 +350,9 @@ class SmartConnect(object):
                 orderResponse = response
                 return orderResponse
             else:
-                logging.exception(f"Invalid response format: {response}")
+                print(f"Invalid response format: {response}")
         else:
-            logging.exception(f"API request failed: {response}")
+            print(f"API request failed: {response}")
         return None
     
     def modifyOrder(self,orderparams):
@@ -431,6 +465,14 @@ class SmartConnect(object):
         getCandleDataResponse=self._postRequest("api.candle.data",historicDataParams)
         return getCandleDataResponse
     
+    def getOIData(self,historicOIDataParams):
+        params=historicOIDataParams
+        for k in list(params.keys()):
+            if params[k] is None:
+                del(params[k])
+        getOIDataResponse=self._postRequest("api.oi.data",historicOIDataParams)
+        return getOIDataResponse
+    
     def getMarketData(self,mode,exchangeTokens):
         params={
             "mode":mode,
@@ -451,10 +493,10 @@ class SmartConnect(object):
             for index, item in enumerate(searchScripResult["data"], start=1):
                 symbol_info = f"{index}. exchange: {item['exchange']}, tradingsymbol: {item['tradingsymbol']}, symboltoken: {item['symboltoken']}"
                 symbols += "\n" + symbol_info
-            logger.info(message + symbols)
+            print(message + symbols)
             return searchScripResult
         elif searchScripResult["status"] is True and not searchScripResult["data"]:
-            logger.info("Search successful. No matching trading symbols found for the given query.")
+            print("Search successful. No matching trading symbols found for the given query.")
             return searchScripResult
         else:
             return searchScripResult
@@ -468,7 +510,7 @@ class SmartConnect(object):
             data = json.loads(response.text)
             return data
         else:
-            logging.exception(f"Error in make_authenticated_get_request: {response.status_code}")
+            print(f"Error in make_authenticated_get_request: {response.status_code}")
             return None
             
     def individual_order_details(self, qParam):
@@ -477,13 +519,54 @@ class SmartConnect(object):
             response_data = self.make_authenticated_get_request(url, self.access_token)
             return response_data
         except Exception as e:
-            logging.exception(f"Error occurred in ind_order_details: {e}")
+            print(f"Error occurred in ind_order_details: {e}")
             return None
     
     def getMarginApi(self,params):
         marginApiResult=self._postRequest("api.margin.api",params)
         return marginApiResult
- 
+    
+    def estimateCharges(self,params):
+        estimateChargesResponse=self._postRequest("api.estimateCharges",params)
+        return estimateChargesResponse
+    
+    def verifyDis(self,params):
+        verifyDisResponse=self._postRequest("api.verifyDis",params)
+        return verifyDisResponse
+    
+    def generateTPIN(self,params):
+        generateTPINResponse=self._postRequest("api.generateTPIN",params)
+        return generateTPINResponse
+    
+    def getTranStatus(self,params):
+        getTranStatusResponse=self._postRequest("api.getTranStatus",params)
+        return getTranStatusResponse
+    
+    def optionGreek(self,params):
+        optionGreekResponse=self._postRequest("api.optionGreek",params)
+        return optionGreekResponse
+    
+    def gainersLosers(self,params):
+        gainersLosersResponse=self._postRequest("api.gainersLosers",params)
+        return gainersLosersResponse
+    
+    def putCallRatio(self):
+        putCallRatioResponse=self._getRequest("api.putCallRatio")
+        return putCallRatioResponse
+
+    def nseIntraday(self):
+        nseIntraday=self._getRequest("api.nseIntraday")
+        return nseIntraday
+    
+    def bseIntraday(self):
+        bseIntraday=self._getRequest("api.bseIntraday")
+        return bseIntraday
+
+    def oIBuildup(self,params):
+        oIBuildupResponse=self._postRequest("api.oIBuildup",params)
+        return oIBuildupResponse
+    
+   
     def _user_agent(self):
         return (__title__ + "-python/").capitalize() + __version__   
 

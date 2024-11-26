@@ -52,8 +52,8 @@ def main(mytimer: func.TimerRequest) -> None:
     UTIL.FUND_BALANCE = fundBalance
 
     #Temporary
-    #fundBalance = 2000
-    #UTIL.append_log_line("|||||||||||||| Overriding Fund Balance=" + str(fundBalance))
+    fundBalance = 10000
+    UTIL.append_log_line("|||||||||||||| Overriding Fund Balance=" + str(fundBalance))
     
     trade_time_flag = (current_hour == 9 and current_minute > 44) or (current_hour >= 10 and current_hour <= 13) or (current_hour == 14 and current_minute < 20)
 
