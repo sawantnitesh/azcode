@@ -5,11 +5,74 @@ from datetime import datetime
 import math
 import time
 import pytz
+import os
 
 from .util import UTIL
+from .azureutil import AZUREUTIL
 
 class TRADE(object):
 
+    @staticmethod
+    def instant_capture(smartAPI):
+        try:
+
+            nifty_strikes_csv_name = "nifty_strikes.csv"
+            AZUREUTIL.get_file(nifty_strikes_csv_name, "meta")
+            df = pd.read_csv("/tmp/" + nifty_strikes_csv_name)
+
+            os.remove(os.path.join('', '/tmp/' + nifty_strikes_csv_name))
+
+            df['strike'] = df['strike'].astype(int)
+            df = df.sort_values(by=['strike','symbol'], ascending=True)
+
+            nifty_price = smartAPI.ltpData("NSE", "NIFTY", "99926000")['data']['ltp']
+
+            pe_row = df[df['strike'] < nifty_price].iloc[-1]
+            ce_row = df[df['strike'] > nifty_price].iloc[0]
+
+            pe_symbol = pe_row['symbol']
+            pe_token = pe_row['token']
+            ce_symbol = ce_row['symbol']
+            ce_token = ce_row['token']
+            
+            p_ce=[]
+            p_pe=[]
+
+            t=0
+
+            logging.info("444444444," + str(pe_symbol) + "," + str(pe_token) + "," + str(ce_symbol) + "," + str(ce_token))
+
+            while True:
+                logging.info("t counter=" + str(t))
+                time.sleep(1)
+                
+                pe_price = -1
+                ce_price = -1
+                try:
+                    pe_price = smartAPI.ltpData("NFO", pe_symbol, str(pe_token))['data']['ltp']
+                    ce_price = smartAPI.ltpData("NFO", ce_symbol, str(ce_token))['data']['ltp']
+                except Exception as se:
+                    logging.info("Error : error ltpData in while loop. " + str(se))
+                    time.sleep(1)
+                    continue
+
+                time_now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                                
+                p_pe.append(pe_symbol + "," + time_now_str + "," + str(pe_price))
+                p_ce.append(ce_symbol + "," + time_now_str + "," + str(ce_price))
+                
+                t=t+1
+                if t > 250:
+                    break
+            
+            
+            UTIL.set_prices(p_pe, p_ce)
+        
+        except Exception as e:
+            UTIL.append_log_line("Error : TRADE.instant_capture_____" + str(e))
+            raise Exception("Error : TRADE.instant_capture_____" + str(e)) from e
+    
+"""
     @staticmethod
     def find_trades(all_stocks_historical_data):
         try:
@@ -150,3 +213,4 @@ class TRADE(object):
                     UTIL.append_log_line("Position squareoff Open Order............ " + str(order_output))
 
                     time.sleep(0.5)
+"""

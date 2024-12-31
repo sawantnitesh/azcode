@@ -15,11 +15,24 @@ from .azureutil import AZUREUTIL
 
 class UTIL(object):
 
+    PE_PRICES = []
+    CE_PRICES = []
+
     LOG_LINES = []
     TRADE_BOM_LOG_LINES = []
     TRADE_SETUP_COUNT = 10
     FUND_BALANCE = None
-
+    
+    @staticmethod
+    def reset_prices():
+        UTIL.PE_PRICES = []
+        UTIL.CE_PRICES = []
+    
+    @staticmethod
+    def set_prices(pe_prices, ce_prices):
+        UTIL.PE_PRICES = pe_prices
+        UTIL.CE_PRICES = ce_prices
+    
     @staticmethod
     def reset_log_lines():
         UTIL.LOG_LINES = []
@@ -186,10 +199,38 @@ class UTIL(object):
     @staticmethod
     def save_logs(smartAPI):
         #Write Log to Azure
+        pe_file_name = datetime.now().strftime('%Y%m%d') + '_PE.log'
+        ce_file_name = datetime.now().strftime('%Y%m%d') + '_CE.log'
+        pe_file_text = None
+        ce_file_text = None
+
         log_file_name = datetime.now().strftime('%Y%m%d') + '.log'
         log_file_tradebom_name = datetime.now().strftime('%Y%m%d') + '_tradebom.log'
         log_file_text = None
         log_file_tradebom_text = None
+
+        if AZUREUTIL.is_blob_exists(pe_file_name, "trades") :
+            AZUREUTIL.get_file(pe_file_name, "trades")
+            pe_file_text = open("/tmp/" + pe_file_name, "r").read().strip()
+            pe_file_text = pe_file_text + '\n'
+            pe_file_text = pe_file_text +  '\n'.join(UTIL.PE_PRICES)
+        else :
+            pe_file_text = '\n'.join(UTIL.PE_PRICES)
+
+        if AZUREUTIL.is_blob_exists(ce_file_name, "trades") :
+            AZUREUTIL.get_file(ce_file_name, "trades")
+            ce_file_text = open("/tmp/" + ce_file_name, "r").read().strip()
+            ce_file_text = ce_file_text + '\n'
+            ce_file_text = ce_file_text +  '\n'.join(UTIL.CE_PRICES)
+        else :
+            ce_file_text = '\n'.join(UTIL.CE_PRICES)
+
+        with open('/tmp/' + pe_file_name, 'w') as f:
+            f.write(pe_file_text)
+        
+        with open('/tmp/' + ce_file_name, 'w') as f:
+            f.write(ce_file_text)
+        
         
         if AZUREUTIL.is_blob_exists(log_file_name, "trades") :
             AZUREUTIL.get_file(log_file_name, "trades")
@@ -215,6 +256,7 @@ class UTIL(object):
         
         UTIL.upload_to_sftp('/tmp/' + log_file_tradebom_name, 'log.txt')
         
+        """
         overall_gain = 0
         if AZUREUTIL.is_blob_exists('overall_gain.txt', "trades") :
             AZUREUTIL.get_file('overall_gain.txt', 'trades')
@@ -225,10 +267,14 @@ class UTIL(object):
         with open('/tmp/gain.txt', 'w') as f:
             f.write(gain_summary)
         UTIL.upload_to_sftp('/tmp/gain.txt', 'gain.txt')
+        """
         
+        AZUREUTIL.save_file(pe_file_name, "trades", True)
+        AZUREUTIL.save_file(ce_file_name, "trades", True)
+
         AZUREUTIL.save_file(log_file_name, "trades", True)
         AZUREUTIL.save_file(log_file_tradebom_name, "trades", True)
-        AZUREUTIL.save_file('gain.txt', "trades", True)
+        #AZUREUTIL.save_file('gain.txt', "trades", True)
 
     @staticmethod
     def save_historical_data(smartAPI, all_stocks_historical_data, token_symbol_map):
