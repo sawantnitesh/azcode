@@ -14,7 +14,7 @@ from .azureutil import AZUREUTIL
 class UTIL(object):
 
     LOG_LINES = []
-        
+    
     @staticmethod
     def reset_log_lines():
         UTIL.LOG_LINES = []

@@ -65,7 +65,7 @@ class SmartConnect(object):
         "api.putCallRatio" : 'rest/secure/angelbroking/marketData/v1/putCallRatio',
         "api.oIBuildup" : 'rest/secure/angelbroking/marketData/v1/OIBuildup',
         "api.nseIntraday" : 'rest/secure/angelbroking/marketData/v1/nseIntraday',
-        "api.bseIntraday" : 'rest/secure/angelbroking/marketData/v1/bseIntraday',
+        "api.bseIntraday" : 'rest/secure/angelbroking/marketData/v1/bseIntraday'
     }
 
     try:
