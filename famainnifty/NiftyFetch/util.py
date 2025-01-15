@@ -25,11 +25,11 @@ class UTIL(object):
     
     @staticmethod
     def getSmartAPI():
-        api_key = 'ifWvWAZ3'
-        clientId = 'N213065'
+        api_key = 'HtuGNSp9 '
+        clientId = 'AAAG254690'
         pwd = '4444'
         smartApi = SmartConnect(api_key)
-        token = "2EUX45DGRXRAZ7VNQ2FGJTZZQM"
+        token = "6GBWLXEQQTLYSUJTPJTIRNST6Y"
         totp = pyotp.TOTP(token).now()
         smartApi.generateSession(clientId, pwd, totp)
         return smartApi

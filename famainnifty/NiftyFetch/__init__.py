@@ -78,7 +78,14 @@ def save_oi_data(smartAPI):
 
     os.remove(os.path.join('', '/tmp/' + nifty_strikes_csv_name))
 
+    nifty_data = UTIL.fetch_historical_data(smartAPI, "99926000", "NIFTY", 1, "ONE_DAY")
+    nifty_day_high = float(nifty_data[-1][4])
+    nifty_day_low = float(nifty_data[-1][5])
+    lower_bound = (nifty_day_low // 100) * 100 #integer division //
+    upper_bound = (nifty_day_high // 100) * 100 + 100
+    
     df['strike'] = df['strike'].astype(int)
+    df = df[(df['strike'] >= lower_bound) & (df['strike'] <= upper_bound)]
     df = df.sort_values(by=['strike','symbol'], ascending=True)
 
     main_df = pd.DataFrame()
