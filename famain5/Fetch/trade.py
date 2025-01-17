@@ -62,7 +62,7 @@ class TRADE(object):
                 p_ce.append(ce_symbol + "," + time_now_str + "," + str(ce_price))
                 
                 t=t+1
-                if t > 250:
+                if t > 550:
                     break
             
             

@@ -34,6 +34,6 @@ def main(mytimer: func.TimerRequest) -> None:
     if trade_time_flag :
         TRADE.instant_sniper(smartAPI)
 
-    UTIL.save_logs(smartAPI)
+    UTIL.save_logs()
     
     logging.info('Fetch : Analyze : Trade : Complete !!!!!!!!!!!!!!!!!!')

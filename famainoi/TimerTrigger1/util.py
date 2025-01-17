@@ -30,38 +30,51 @@ class UTIL(object):
         oi_data = oi_json['records']['data']
 
         oi_rows = []
-        current_time = datetime.now(pytz.timezone("Asia/Calcutta")).strftime('%H:%M')
+
+        flag = False
         
-        for d in oi_data:
-            if d['expiryDate'] == expiry_date:
-                if int(d['strikePrice'])%100 == 0:
-                    if 'CE' in d:
-                        oi_d = d['CE']
-                        oi_rows.append([-1,current_time, oi_d['strikePrice'], 'CE', oi_d['openInterest'], oi_d['lastPrice']])
-                    if 'PE' in d:
-                        oi_d = d['PE']
-                        oi_rows.append([-1,current_time, oi_d['strikePrice'], 'PE', oi_d['openInterest'], oi_d['lastPrice']])
-        
-        df = pd.DataFrame(oi_rows, index=None, columns=['Sr','time','strike', 'CEPE', 'oi', 'price'])
-        
-        df_all = None
-        if AZUREUTIL.is_blob_exists("oi_data.csv", "oidata"):
-            AZUREUTIL.get_file("oi_data.csv", "oidata")
-            df_all = pd.read_csv("/tmp/oi_data.csv")
-            df_all = pd.concat([df_all, df])
-            os.remove(os.path.join('', '/tmp/oi_data.csv'))
+        current_day = datetime.now().strftime('%A')
+        if current_day != 'Friday':
+            flag = True
         else :
-            df_all = df
+            #skip friday 9.15 time : after expiry : it shows too much spike down in oi
+            todays_date = datetime.now()
+            current_hour = todays_date.astimezone(pytz.timezone("Asia/Calcutta")).hour
+            current_minute = todays_date.astimezone(pytz.timezone("Asia/Calcutta")).minute
+            flag = (current_hour == 9 and current_minute > 15) or (current_hour > 9)
         
-        df_all['Sr'] = range(1, len(df_all)+1)
+        if flag :
+            current_time = datetime.now(pytz.timezone("Asia/Calcutta")).strftime('%H:%M')
+            for d in oi_data:
+                if d['expiryDate'] == expiry_date:
+                    if int(d['strikePrice'])%100 == 0:
+                        if 'CE' in d:
+                            oi_d = d['CE']
+                            oi_rows.append([-1,current_time, oi_d['strikePrice'], 'CE', oi_d['openInterest'], oi_d['lastPrice']])
+                        if 'PE' in d:
+                            oi_d = d['PE']
+                            oi_rows.append([-1,current_time, oi_d['strikePrice'], 'PE', oi_d['openInterest'], oi_d['lastPrice']])
+            
+            df = pd.DataFrame(oi_rows, index=None, columns=['Sr','time','strike', 'CEPE', 'oi', 'price'])
+            
+            df_all = None
+            if AZUREUTIL.is_blob_exists("oi_data.csv", "oidata"):
+                AZUREUTIL.get_file("oi_data.csv", "oidata")
+                df_all = pd.read_csv("/tmp/oi_data.csv")
+                df_all = pd.concat([df_all, df])
+                os.remove(os.path.join('', '/tmp/oi_data.csv'))
+            else :
+                df_all = df
+            
+            df_all['Sr'] = range(1, len(df_all)+1)
 
-        df_all.to_csv('/tmp/oi_data.csv', index=False)
-        UTIL.upload_to_sftp('/tmp/oi_data.csv', 'oi_data.csv')
-        AZUREUTIL.save_file('oi_data.csv', "oidata", True)
+            df_all.to_csv('/tmp/oi_data.csv', index=False)
+            UTIL.upload_to_sftp('/tmp/oi_data.csv', 'oi_data.csv')
+            AZUREUTIL.save_file('oi_data.csv', "oidata", True)
 
-        UTIL.write_oi_csv_meta_data_to_sftp()
-        
-        logging.info("OI Data Saved____________________:ExpiryDate=" + expiry_date)
+            UTIL.write_oi_csv_meta_data_to_sftp()
+            
+            logging.info("OI Data Saved____________________:ExpiryDate=" + expiry_date)
     
 
     @staticmethod

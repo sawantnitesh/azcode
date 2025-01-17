@@ -101,7 +101,7 @@ class TRADE(object):
                             time.sleep(1)
                             current_time = datetime.now()
                             time_difference = current_time - place_order_time
-                            if time_difference.total_seconds() > 12 :
+                            if time_difference.total_seconds() > 8 :
                                 orderparams = {
                                     "variety":"NORMAL",
                                     "tradingsymbol":ce_symbol,
@@ -117,10 +117,11 @@ class TRADE(object):
                                 logging.info(orderparams)
                                 
                                 smartAPI.placeOrder(orderparams)
+                                t=t+8
                                 break
 
                 t=t+1
-                if t > 250:
+                if t > 550:
                     break
             
         
