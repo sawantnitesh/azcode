@@ -76,45 +76,6 @@ class UTIL(object):
             
             logging.info("OI Data Saved____________________:ExpiryDate=" + expiry_date)
     
-
-    @staticmethod
-    def analyze_oi():
-
-        AZUREUTIL.get_file("meta.csv", "meta")
-        df_meta = pd.read_csv("/tmp/meta.csv")
-        os.remove(os.path.join('', '/tmp/meta.csv'))
-        nifty_price = df_meta[df_meta['key'] == 'nifty_price']['value'][0]
-
-        df_all = pd.read_csv("/tmp/oi_data.csv")
-        os.remove(os.path.join('', '/tmp/oi_data.csv'))
-        
-        all_strikes = df_all['strike'].unique()
-        result = filter(lambda x: abs(x - nifty_price) <= 100, all_strikes)
-        strikes = list(result)
-
-        for strike in strikes :
-            df_ce = df_all[(df_all['strike'] == strike) & (df_all['CEPE'] == 'CE')][-2:]    
-            df_pe = df_all[(df_all['strike'] == strike) & (df_all['CEPE'] == 'PE')][-2:]
-            
-            ce_oi1 = df_ce[-2:]['oi'].iloc[0]
-            ce_oi2 = df_ce[-1:]['oi'].iloc[0]
-            
-            pe_oi1 = df_pe[-2:]['oi'].iloc[0]
-            pe_oi2 = df_pe[-1:]['oi'].iloc[0]
-            
-            oi_trades = "Direction,Strike,ce1,ce2,pe1,pe2\n"
-            if (ce_oi2/ce_oi1 >= 1.15 and pe_oi1/pe_oi2 >= 1.15) :
-                oi_trades = "DOWN", strike, ce_oi1, ce_oi2, pe_oi1, pe_oi2 + "\n"
-            if (ce_oi1/ce_oi2 >= 1.15 and pe_oi2/pe_oi1 >= 1.15) :
-                oi_trades = oi_trades + "UP", strike, ce_oi1, ce_oi2, pe_oi1, pe_oi2 + "\n"
-            
-            with open('/tmp/oi_trades.csv', 'w') as f:
-                f.write(oi_trades)
-            
-            UTIL.upload_to_sftp('/tmp/oi_trades.csv', 'oi_trades.csv')
-            AZUREUTIL.save_file('oi_trades.csv', "trades", True)
-
-
     @staticmethod
     def back_up():
         todays_date = datetime.now()

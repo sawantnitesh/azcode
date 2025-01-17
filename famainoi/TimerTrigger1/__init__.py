@@ -13,7 +13,5 @@ def main(mytimer: func.TimerRequest) -> None:
         logging.info('The timer is past due!')
 
     UTIL.load_oi()
-
-    UTIL.analyze_oi()
     
     logging.info('Python timer trigger function ran at %s', utc_timestamp)
